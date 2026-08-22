@@ -11,11 +11,12 @@ Utilizatori: **Rebecca** (admin/instructor) și **părinții** copiilor înscri�
 
 | Subiect | Decizie |
 |---|---|
-| Grupe | Complet editabile de Rebecca: creare, redenumire, arhivare. Acum: 8-10, 11-12, 14-16. Anterior a existat 13-15. |
+| Ateliere | Complet editabile: creare, redenumire, arhivare. Atelierul e și program, și grupă de copii. |
 | Interval de vârstă | Doar etichetă informativă. **Nu validează nimic.** Intervalele se suprapun și se schimbă în timp. |
-| Ateliere speciale | Trebuie suportate: ateliere de vacanță, ateliere extinse (4h), orice eveniment ad-hoc. Nu afectează fluxul normal. |
-| Structura atelierului | Rebecca decide de fiecare dată: 4 ședințe de 2h, sau 1 ședință de 6h, sau 8h. **Introdus manual, fără automatizare.** |
-| Preț abonament | Se stabilește per copil, nu pe listă de prețuri. Poate fi redus sau 0. |
+| Ritm | Setabil per atelier: săptămânal, la două săptămâni, lunar, sau fără program fix. |
+| Durata ședinței | **Irelevantă pentru orice calcul.** 1,5 ore sau 6 ore — tot o ședință e. |
+| Ateliere speciale | Trebuie suportate: ateliere de vacanță, evenimente ad-hoc. Nu afectează fluxul normal. |
+| Preț | Două tarife pe atelier: preț pe ședință în abonament, și preț la bucată (mai mare). Se copiază în abonament la creare. Poate fi redus sau 0. |
 | Statut plată | Bifă pe copil: `Standard` / `Parțial` / `Scutit`. Motivul nu se stochează — îl știe Rebecca. |
 | Notificări | **Nimic automat în v1.** Orice mesaj către părinte pleacă doar la apăsarea unui buton de către Rebecca. |
 | Gustări | Nu intră în aplicație. Se gestionează în afara ei. |
@@ -51,32 +52,30 @@ Excepția: datele nu se pierd niciodată. Modificările se scriu în jurnal.
 ## 3. Regula centrală de care depinde tot
 
 > **Soldul unui abonament nu se stochează niciodată ca un contor.**
-> Se calculează întotdeauna din înregistrările de prezență, în **credite**.
+> Se calculează întotdeauna din înregistrările de prezență.
 
 ```
-credite_rămase = abonament.total_credite
-                 − SUM(prezențe.credits_used WHERE abonament_id = X)
+ședințe_rămase = abonament.total_sessions
+                 − SUM(prezențe.sessions_used WHERE abonament_id = X)
 ```
 
 Motivul pentru calcul derivat: un contor `ramase = ramase - 1` se strică la prima
 corectură, la primul dublu-click, la prima ștergere. Un calcul derivat e mereu
 corect, e auditabil și permite Rebeccăi să modifice orice fără efecte laterale.
 
-Motivul pentru credite în loc de boolean: acoperă orice tip de atelier fără
-schimbare de schemă.
+**`sessions_used` e aproape întotdeauna 1.** Durata nu contează — o ședință de
+6 ore și una de 1,5 ore consumă la fel.
 
-| Situație | credits_used |
+| Situație | sessions_used |
 |---|---|
-| Atelier normal, copil prezent | 1 |
+| Copil prezent, orice durată | 1 |
 | Absență pe care Rebecca o iartă | 0 |
 | Absență nemotivată | 1 |
-| Sesiune anulată de club | 0 |
-| Atelier extins de 4 ore | 2 (configurabil) |
-| Atelier de vacanță plătit separat | 0 + o plată înregistrată |
+| Ședință anulată de club | 0 |
 | Drop-in (fără abonament) | 0, `subscription_id = null` |
 
-Valoarea vine implicit din tipul atelierului, dar Rebecca o poate suprascrie
-pentru un copil anume, cu un tap.
+Câmpul rămâne numeric, nu boolean, ca Rebecca să poată pune 2 într-un caz
+neprevăzut. Dar valoarea implicită e 1 și nu se calculează din nimic.
 
 ### A doua regulă: banii au două laturi
 
@@ -134,19 +133,48 @@ Contul de autentificare. Un singur tabel pentru toată lumea.
 | is_active | boolean | dezactivare fără ștergere |
 | created_at | timestamptz | |
 
-### `groups`
-Complet gestionabilă din interfață. Rebecca creează, redenumește și arhivează
-grupe fără să fie nevoie de cod sau de migrare.
+### `workshops` — atelierele (în interfață: „Ateliere")
+Înlocuiește ce se numea anterior `groups`. Atelierul e și program, și grupă.
 
 | câmp | tip | note |
 |---|---|---|
 | id | uuid PK | |
-| name | text | ex. „Grupa mijlocie" — text liber |
+| name | text | „Atelier 10-12 ani", „Atelier 14-18 ani" — apare în calendar |
 | min_age / max_age | int nullable | **doar etichetă**, nu validează nimic |
-| color | text nullable | pentru identificare vizuală rapidă în calendar |
-| default_day / default_time | nullable | ajută la generarea sesiunilor recurente |
+| **price_per_session** | numeric(10,2) | prețul unei ședințe în abonament |
+| **drop_in_price** | numeric(10,2) | prețul unei ședințe plătite la bucată — mai mare |
+| color | text nullable | identificare vizuală în calendar |
+| frequency | enum | `weekly` / `biweekly` / `monthly` / `none` |
+| weekday | int nullable | 1-7 |
+| start_time | time nullable | |
+| duration_min | int nullable | **informativ**, nu afectează niciun calcul |
+| month_week | int nullable | doar pentru `monthly` |
+| sessions_per_month | int nullable | informativ, ajută la crearea abonamentelor |
 | is_active | boolean | arhivare, niciodată ștergere |
-| sort_order | int | ordinea de afișare |
+| sort_order | int | |
+
+**Două prețuri, pentru că abonamentul e mai ieftin decât plata la bucată.**
+
+| câmp | când se folosește | exemplu |
+|---|---|---|
+| `price_per_session` | la crearea unui abonament | 60 lei |
+| `drop_in_price` | când un copil vine fără abonament | 80 lei |
+
+Rebecca setează o dată „Atelier 10-12 ani = 60 lei/ședință în abonament,
+80 lei la bucată". La crearea unui abonament de 4 ședințe, aplicația
+completează 240 lei. Când bifează prezent un copil fără abonament valid,
+propune o plată de 80 lei. Ambele sunt sugestii editabile.
+
+Aici e singurul loc din aplicație unde prețurile chiar economisesc timp:
+Rebecca nu trebuie să-și amintească tariful fiecărui atelier în momentul în
+care are copiii pe cap.
+
+**Durata nu intră în niciun calcul.** `duration_min` există doar ca să știe
+Rebecca cât ține și ca să apară pe card. O ședință de 6 ore și una de 1,5 ore
+consumă la fel din abonament: una.
+
+**Mai multe ateliere pentru aceeași vârstă sunt normale.** „Atelier 10-12 Marți"
+și „Atelier 10-12 Joi" pot exista simultan, cu prețuri diferite dacă e cazul.
 
 **Reguli:**
 - Intervalele de vârstă se pot suprapune (11-12 și 11-13 pot coexista). Aplicația
@@ -163,8 +191,7 @@ grupe fără să fie nevoie de cod sau de migrare.
 ### `children`
 | id | uuid PK |
 | first_name / last_name | text |
-| birth_date | date | pentru sugestia de mutare între grupe |
-| group_id | uuid FK → groups |
+| birth_date | date | informativ |
 | enrolled_at | date |
 | payment_status | enum | `standard` / `partial` / `exempt` — vezi mai jos |
 | payment_status_note | text nullable | opțional, strict intern, poate rămâne gol |
@@ -187,6 +214,21 @@ vizibil doar ei.
 Blocajul pe `exempt` la notificări e intenționat și e o plasă de siguranță: e
 genul de greșeală pe care nu vrei să o faci cu o familie aflată într-o situație
 delicată, nici măcar din greșeală, nici măcar o dată.
+
+### `child_workshops` — un copil poate fi înscris la mai multe ateliere
+| child_id | uuid FK |
+| workshop_id | uuid FK |
+| is_primary | boolean | atelierul principal, afișat în listă |
+| joined_at / left_at | date nullable | |
+
+PK compus (child_id, workshop_id).
+
+**De ce nu un simplu `workshop_id` pe copil:** dacă există „Atelier 10-12 Marți"
+și „Atelier 10-12 Joi", un copil poate veni la ambele. Chiar dacă azi niciunul
+nu o face, relația multiplă costă o tabelă acum și o migrare peste trei luni.
+
+Interfața rămâne simplă: la adăugarea unui copil se alege un singur atelier, iar
+„+ Înscrie la alt atelier" e buton secundar.
 
 ### `parent_child` (tabelă de legătură)
 | parent_user_id | uuid FK → users |
@@ -218,7 +260,7 @@ poată filtra mai târziu. Nimic nu se întâmplă automat pe baza tipului.
 |---|---|---|
 | id | uuid PK | |
 | name | text | „Obișnuit", „Vacanță", „Extins", „Demonstrativ" |
-| suggested_credit_cost | numeric nullable | doar se pre-completează în formular |
+| suggested_sessions_used | numeric nullable | doar se pre-completează în formular, implicit 1 |
 | counts_in_stats | boolean | singura logică reală: exclude din rata de prezență |
 | is_active | boolean | |
 
@@ -239,14 +281,14 @@ de 6 ore care valorează 3 ședințe, tastează 6 ore și 3. Dacă vrea 4 întâ
 | title | text nullable | „Atelier de vacanță — Crăciun" |
 | date | date | |
 | start_time / end_time | time | durata e liberă: 1h30 sau 4h |
-| credit_cost | numeric | preluat din tip, **editabil per sesiune** |
+| sessions_used_default | numeric | implicit 1, **editabil per ședință** |
 | topic | text nullable | |
 | instructor_id | uuid FK → users nullable | |
 | status | enum | `scheduled` / `completed` / `cancelled` |
 | capacity | int nullable | util la atelierele speciale |
 | notes | text nullable | |
 
-O sesiune anulată nu consumă credite nimănui, dar rămâne vizibilă în istoric.
+O ședință anulată nu consumă nimic din abonamente, dar rămâne vizibilă în istoric.
 
 ### `session_participants` — participanți aleși manual
 | session_id | uuid FK |
@@ -267,13 +309,25 @@ Grupa e sursa de adevăr pentru atelierele recurente.
 |---|---|---|
 | id | uuid PK | |
 | child_id | uuid FK | |
-| name | text | ex. „Abonament 8 ședințe" — text liber |
-| total_credits | numeric | câte ședințe include |
-| price | numeric(10,2) | **stabilit per copil**, poate fi 0 |
+| workshop_id | uuid FK | la ce atelier e valabil |
+| name | text | ex. „4 ședințe septembrie" — text liber |
+| total_sessions | int | câte ședințe include |
+| **price_per_session** | numeric(10,2) | **copiat din atelier la creare** |
+| price | numeric(10,2) | implicit `total_sessions × price_per_session`, editabil |
 | price_note | text nullable | motivul reducerii, **strict intern** |
 | start_date / end_date | date | |
 | status | enum | `active` / `expired` / `cancelled` |
 | created_by / created_at | | |
+
+**De ce se copiază prețul, nu se citește din atelier:** dacă în ianuarie Rebecca
+ridică prețul de la 60 la 70 lei, abonamentele vândute în decembrie trebuie să
+rămână la 60. Altfel istoricul de încasări se rescrie retroactiv și cifrele nu
+mai corespund cu ce a încasat efectiv.
+
+**Un abonament e legat de un atelier.** Un copil înscris la două ateliere cu
+prețuri diferite are două abonamente separate. Asta răspunde și la întrebarea
+„din care abonament se scade" la bifarea prezenței: din cel al atelierului
+respectiv.
 
 **Despre prețurile reduse:**
 Un abonament redus sau gratuit e pur și simplu unul cu `price` mai mic, eventual
@@ -285,14 +339,14 @@ ecranul de prezență, niciodată în portalul părinților, niciodată într-un
 Un ecran deschis la atelier e văzut de copii și de alți părinți.
 
 Un copil poate avea mai multe abonamente în istoric. Cel „curent" = cel activ cu
-`end_date >= azi` și credite rămase > 0.
+`end_date >= azi` și ședințe rămase > 0.
 
 ### `attendance` — inima aplicației
 | id | uuid PK |
 | session_id | uuid FK |
 | child_id | uuid FK |
 | status | enum | `present` / `absent` / `late` |
-| credits_used | numeric | **editabil de Rebecca**, vezi secțiunea 2 |
+| sessions_used | numeric | implicit 1, **editabil de Rebecca** |
 | subscription_id | uuid FK nullable | null = drop-in sau plătit separat |
 | is_drop_in | boolean |
 | marked_by / marked_at | |
@@ -301,11 +355,11 @@ Un copil poate avea mai multe abonamente în istoric. Cel „curent" = cel activ
 UNIQUE (session_id, child_id).
 
 **Logica implicită** (Rebecca o poate suprascrie cu un tap):
-- `present` → `credits_used = sessions.credit_cost`
+- `present` → `sessions_used = 1`
 - `absent` → același cost, dar apare butonul „Nu scădea ședința" → 0
-- sesiune anulată → toate prezențele au `credits_used = 0`
-- copil fără abonament valid → `subscription_id = null`, `credits_used = 0`,
-  se propune înregistrarea unei plăți drop-in
+- ședință anulată → toate prezențele au `sessions_used = 0`
+- copil fără abonament valid → `subscription_id = null`, `sessions_used = 0`,
+  se propune o plată drop-in cu suma din `workshops.drop_in_price`
 
 ### `payments`
 | id | uuid PK |
@@ -367,14 +421,107 @@ Se scrie la: modificare prezență, ștergere prezență, modificare abonament,
 
 ---
 
-## 5. Ecranul de bifat prezențe — cel mai important din aplicație
+## Terminologie — un cuvânt pentru un lucru
+
+| cuvânt | înseamnă | exemplu |
+|---|---|---|
+| **Atelier** | programul + grupa de copii | „Atelier 10-12 ani" |
+| **Ședință** | o întâlnire concretă, cu dată și oră | marți 26 aug, 17:00 |
+| **Abonament** | un număr de ședințe cumpărate la un atelier | „8 ședințe" |
+
+**Durata unei ședințe e irelevantă.** O întâlnire de 1,5 ore și una de 6 ore
+sunt amândouă *o ședință*. Grupa 10-12 are ședințe de 2 ore (1,5 ore de lucru
+plus acomodare și joacă), grupa 14-18 are ședințe de 6 ore, comasate lunar
+pentru că adolescenții nu pot veni săptămânal. Pentru abonament, statistici și
+plăți, ambele contează la fel: unu.
+
+**Nu există „grupe" ca entitate separată.** Atelierul *este* grupa. Un copil e
+înscris la „Atelier 10-12 ani", nu la o grupă dintr-un atelier. Un concept mai
+puțin de explicat Rebeccăi și un tabel mai puțin în bază.
+
+Numele atelierului e text liber și e ceea ce apare în calendar. Pot exista
+simultan „Atelier 10-12 Marți" și „Atelier 10-12 Joi".
+
+## Navigația
+
+Ordinea urmează frecvența de folosire.
+
+```
+Calendar    Copii    Ateliere    Abonamente    Setări
+```
+
+- **Calendar** — ecranul de start, ședințele pe săptămâni
+- **Copii** — listă și fișe individuale
+- **Ateliere** — programe, ritm, preț pe ședință, copii înscriși
+- **Abonamente** — abonamente, plăți, restanțe (din Faza 2)
+- **Setări** — tipuri de ședință, acorduri, cont
+
+„Tipuri atelier" nu stă în meniul principal. E configurare, nu lucru zilnic.
+
+## Reguli de afișare
+
+- **Nu afișa informație implicită.** Tipul „Obișnuit" nu se scrie pe card,
+  pentru că e cazul normal. Se afișează doar tipurile diferite.
+- **Cardul întreg e apăsabil**, nu doar un link gri într-un colț.
+- **Fiecare card de ședință arată:** ziua și data, ora, numele atelierului,
+  câți copii, și starea prezenței (bifat / nebifat).
+- **Scrie data explicit.** „Azi" fără „marți, 26 august" obligă utilizatorul să
+  se uite la telefon ca să se orienteze.
+- **Contrast real pe acțiuni.** Gri deschis pe alb citește ca „dezactivat".
+
+## Ecranul principal — calendarul
+
+**Corecție față de versiunea anterioară a planului:** aplicația NU se deschide
+pe „atelierul de azi". Clubul are ateliere două-trei zile pe săptămână, deci în
+majoritatea zilelor nu e nimic azi, iar Rebecca rămâne cu un ecran gol care nu-i
+spune ce să facă.
+
+**Ecranul de start e o listă de ateliere, grupată pe săptămâni:**
+
+```
+ASTĂZI
+  (dacă nu e nimic:)
+  Niciun atelier astăzi.
+  Următorul: marți, 26 august, 17:00 — 10-12 Marți   [Deschide]
+
+SĂPTĂMÂNA ACEASTA
+  Marți 26 aug, 17:00   10-12 Marți     12 copii   ✓ bifat
+  Joi   28 aug, 17:00   10-12 Joi        9 copii   — nebifat
+  Sâm   30 aug, 10:00   14-16 lunar      7 copii   — nebifat
+
+SĂPTĂMÂNA VIITOARE
+  ...
+
+[ + Atelier nou ]   [ Generează sesiuni ]
+```
+
+- Atelierele trecute **nebifate** apar în roșu, sus. Ăsta e cel mai util semnal
+  din toată aplicația: „ai uitat să bifezi joia trecută".
+- Se poate derula înapoi în istoric și înainte în viitor.
+- Un tap pe un atelier deschide ecranul de prezență.
+
+## Generarea sesiunilor recurente
+
+Buton **„Generează sesiuni"**, nu proces automat în fundal.
+
+1. Rebecca alege grupa și perioada („septembrie 2026")
+2. Aplicația calculează din programul grupei și **arată lista propusă**
+3. Rebecca șterge din listă ce nu vrea (vacanțe, sărbători) și confirmă
+4. Sesiunile se creează
+
+Regenerarea nu suprascrie și nu șterge nimic: sesiunile care există deja sunt
+sărite, cele bifate rămân neatinse. Orice sesiune generată poate fi mutată,
+editată sau anulată individual după aceea.
+
+## Ecranul de bifat prezențe — al doilea ca importanță
 
 Riscul numărul unu al proiectului nu e tehnic. E ca Rebecca să renunțe la
 aplicație și să revină la caiet pentru că durează prea mult. Ecranul ăsta merită
 de trei ori mai multă atenție decât oricare altul.
 
 **Cerințe:**
-- Se deschide direct pe sesiunea de azi a grupei respective, fără navigare
+- Se ajunge aici cu un tap din lista de ateliere, fără navigare suplimentară
+- Sus, clar: data, ora și numele grupei — Rebecca trebuie să știe unde e
 - Toți copiii grupei, listă verticală, **un singur tap = prezent**
 - Butoane mari, minim 44px înălțime — se folosește cu copiii pe cap
 - Lângă fiecare nume: indicator de abonament
@@ -385,8 +532,7 @@ de trei ori mai multă atenție decât oricare altul.
 - Salvare automată la fiecare tap, fără buton „Salvează"
 - Buton „**+ Adaugă copil**" — caută în toți copiii activi, nu doar în grupă.
   Necesar pentru recuperări, frați veniți o dată, copii noi de probă.
-- Dacă atelierul are cost diferit de 1 credit, se afișează clar sus:
-  „Acest atelier consumă 2 ședințe"
+- Dacă ședința consumă altceva decât 1 din abonament, se afișează clar sus
 - Funcționează pe telefon, în picioare, cu o mână
 - Ideal: funcționează și fără internet, sincronizează după (v1.5, nu blocant)
 
@@ -406,13 +552,13 @@ Exact ce a cerut Rebecca: într-un singur loc, tot ce ține de un copil.
 
 **Dedesubt, două liste:**
 
-*Abonamente* — nume, perioadă, credite, preț, credite consumate, credite rămase.
+*Abonamente* — atelier, perioadă, ședințe incluse, preț, consumate, rămase.
 Cele expirate rămân vizibile, estompate.
 
 *Plăți* — dată, sumă, metodă, notă, cine a înregistrat. Buton „+ Adaugă plată"
 mare, pentru că e acțiunea cea mai frecventă.
 
-**Sub ele:** istoricul complet de prezențe, cu data, atelierul și câte credite a
+**Sub ele:** istoricul complet de prezențe, cu data, atelierul și câte ședințe a
 consumat fiecare.
 
 **Ecran derivat, necesar Rebeccăi:** „Cine are restanțe" — copiii cu sold
