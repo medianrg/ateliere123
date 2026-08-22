@@ -93,47 +93,47 @@ ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- users: everyone can see their own row; staff can see and manage everyone.
 CREATE POLICY users_select_own ON public.users
-  FOR SELECT USING (id = auth.uid());
+  FOR SELECT TO authenticated USING (id = auth.uid());
 CREATE POLICY users_select_staff ON public.users
-  FOR SELECT USING (public.is_admin_or_instructor());
+  FOR SELECT TO authenticated USING (public.is_admin_or_instructor());
 CREATE POLICY users_update_admin ON public.users
-  FOR UPDATE USING (public.is_admin()) WITH CHECK (public.is_admin());
+  FOR UPDATE TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
 -- groups, session_types: non-sensitive labels. Staff manage; parents can
 -- read the active ones (needed to display group/session names).
 CREATE POLICY groups_all_staff ON public.groups
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY groups_select_parent ON public.groups
-  FOR SELECT USING (is_active = true);
+  FOR SELECT TO authenticated USING (is_active = true);
 
 CREATE POLICY session_types_all_staff ON public.session_types
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY session_types_select_parent ON public.session_types
-  FOR SELECT USING (is_active = true);
+  FOR SELECT TO authenticated USING (is_active = true);
 
 -- children: staff manage everyone; a parent only ever sees their own kids.
 CREATE POLICY children_all_staff ON public.children
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY children_select_parent ON public.children
-  FOR SELECT USING (public.is_parent_of_child(id));
+  FOR SELECT TO authenticated USING (public.is_parent_of_child(id));
 
 -- parent_child: staff manage; a parent can see their own links (not other
 -- families').
 CREATE POLICY parent_child_all_staff ON public.parent_child
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY parent_child_select_own ON public.parent_child
-  FOR SELECT USING (parent_user_id = auth.uid());
+  FOR SELECT TO authenticated USING (parent_user_id = auth.uid());
 
 -- consents: internal to staff only, never exposed to the parent portal.
 CREATE POLICY consents_all_staff ON public.consents
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 
 -- sessions: staff manage; a parent can see sessions their own child has an
 -- attendance record for (needed to render their attendance history).
 CREATE POLICY sessions_all_staff ON public.sessions
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY sessions_select_parent ON public.sessions
-  FOR SELECT USING (
+  FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.attendance a
       WHERE a.session_id = sessions.id AND public.is_parent_of_child(a.child_id)
@@ -142,54 +142,54 @@ CREATE POLICY sessions_select_parent ON public.sessions
 
 -- session_participants: manual roster additions, staff-only.
 CREATE POLICY session_participants_all_staff ON public.session_participants
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 
 -- subscriptions: financial data. Only admin manages it (not instructor); a
 -- parent can read their own child's subscriptions.
 CREATE POLICY subscriptions_all_admin ON public.subscriptions
-  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+  FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 CREATE POLICY subscriptions_select_parent ON public.subscriptions
-  FOR SELECT USING (public.is_parent_of_child(child_id));
+  FOR SELECT TO authenticated USING (public.is_parent_of_child(child_id));
 
 -- attendance: the operational heart of the app. Both admin and instructor
 -- mark it; a parent can only read their own child's rows, never write.
 CREATE POLICY attendance_all_staff ON public.attendance
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY attendance_select_parent ON public.attendance
-  FOR SELECT USING (public.is_parent_of_child(child_id));
+  FOR SELECT TO authenticated USING (public.is_parent_of_child(child_id));
 
 -- payments: financial data, admin only; a parent can read their own
 -- child's payment history.
 CREATE POLICY payments_all_admin ON public.payments
-  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+  FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 CREATE POLICY payments_select_parent ON public.payments
-  FOR SELECT USING (public.is_parent_of_child(child_id));
+  FOR SELECT TO authenticated USING (public.is_parent_of_child(child_id));
 
 -- feedback: staff write and manage; a parent only ever sees their own
 -- child's *published* feedback — drafts and withdrawn notes stay hidden
 -- even at the database level.
 CREATE POLICY feedback_all_staff ON public.feedback
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY feedback_select_parent ON public.feedback
-  FOR SELECT USING (status = 'published' AND public.is_parent_of_child(child_id));
+  FOR SELECT TO authenticated USING (status = 'published' AND public.is_parent_of_child(child_id));
 
 -- feedback_versions: editorial history, staff-only.
 CREATE POLICY feedback_versions_all_staff ON public.feedback_versions
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 
 -- feedback_replies: staff read/manage everything; a parent can read and
 -- post replies only on their own child's published feedback.
 CREATE POLICY feedback_replies_all_staff ON public.feedback_replies
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY feedback_replies_select_parent ON public.feedback_replies
-  FOR SELECT USING (
+  FOR SELECT TO authenticated USING (
     EXISTS (
       SELECT 1 FROM public.feedback f
       WHERE f.id = feedback_replies.feedback_id AND public.is_parent_of_child(f.child_id)
     )
   );
 CREATE POLICY feedback_replies_insert_parent ON public.feedback_replies
-  FOR INSERT WITH CHECK (
+  FOR INSERT TO authenticated WITH CHECK (
     author_id = auth.uid()
     AND EXISTS (
       SELECT 1 FROM public.feedback f
@@ -201,12 +201,12 @@ CREATE POLICY feedback_replies_insert_parent ON public.feedback_replies
 
 -- notifications_log: staff manage; a parent can see what was sent to them.
 CREATE POLICY notifications_log_all_staff ON public.notifications_log
-  FOR ALL USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
+  FOR ALL TO authenticated USING (public.is_admin_or_instructor()) WITH CHECK (public.is_admin_or_instructor());
 CREATE POLICY notifications_log_select_parent ON public.notifications_log
-  FOR SELECT USING (recipient_parent_id = auth.uid());
+  FOR SELECT TO authenticated USING (recipient_parent_id = auth.uid());
 
 -- audit_log: staff can read it (nobody writes to it directly from the
 -- client — the app writes it server-side with the service role, which
 -- bypasses RLS entirely).
 CREATE POLICY audit_log_select_staff ON public.audit_log
-  FOR SELECT USING (public.is_admin_or_instructor());
+  FOR SELECT TO authenticated USING (public.is_admin_or_instructor());
