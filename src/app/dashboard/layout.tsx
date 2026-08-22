@@ -1,6 +1,15 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 import { Button } from "@/components/ui/button";
+
+const NAV_LINKS = [
+  { href: "/dashboard", label: "Azi" },
+  { href: "/dashboard/sessions", label: "Ședințe" },
+  { href: "/dashboard/children", label: "Copii" },
+  { href: "/dashboard/groups", label: "Grupe" },
+  { href: "/dashboard/session-types", label: "Tipuri atelier" },
+];
 
 export default async function DashboardLayout({
   children,
@@ -37,6 +46,17 @@ export default async function DashboardLayout({
           </form>
         </div>
       </header>
+      <nav className="flex gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-4 py-2">
+        {NAV_LINKS.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </nav>
       <main className="flex-1 p-4">{children}</main>
     </div>
   );
