@@ -12,18 +12,28 @@ Utilizatori: **Rebecca** (admin/instructor) și **părinții** copiilor înscri�
 - [`CLAUDE.md`](./CLAUDE.md) — instrucțiuni de lucru pentru implementare
   (stack tehnic, reguli de bază de date, mod de lucru pe faze).
 
-## Stadiu actual — Faza 0: Fundație
+## Stadiu actual — Faza 1: Nucleul administrativ
 
-- Proiect Next.js (App Router) + TypeScript, cu Tailwind CSS
-- Autentificare cu email/parolă prin Supabase Auth
-- Schema completă a bazei de date (Drizzle ORM), cu migrări versionate în
-  `drizzle/`
-- Row Level Security activat pe toate tabelele — un părinte nu poate accesa
-  datele altui copil, nici măcar printr-un apel direct la API
-- Layout de bază + un dashboard gol, în română
+**Faza 0** (fundație): Next.js + Tailwind, autentificare Supabase, schema
+completă a bazei de date cu Row Level Security pe toate tabelele.
 
-Fazele următoare (nucleul administrativ, abonamente, portalul părinților
-etc.) sunt descrise în `PLAN.md`.
+**Faza 1** (nucleul administrativ) adaugă:
+- **Grupe** — creare, editare, arhivare (`/dashboard/groups`)
+- **Tipuri de atelier** — etichete simple (`/dashboard/session-types`)
+- **Copii** — listă, adăugare, editare, mutare între grupe, dezactivare,
+  plus **acordul GDPR** (statut foto, tag social) per copil
+  (`/dashboard/children`)
+- **Ședințe** — normale (legate de o grupă) și speciale (participanți
+  manuali), creare și anulare (`/dashboard/sessions`)
+- **Ecranul de prezență** — cel mai important din aplicație: un tap =
+  prezent, salvare automată, indicator foto (GDPR) lângă fiecare copil,
+  buton „+ Adaugă copil" pentru recuperări/frați/copii de probă
+  (`/dashboard/sessions/[id]/attendance`)
+- Dashboard-ul de start arată direct ședințele de azi, fiecare cu un link
+  spre ecranul ei de prezență — fără navigare
+
+Fără abonamente, fără părinți, fără plăți — vin în Faza 2 și Faza 3 (vezi
+`PLAN.md` și deciziile notate în `DECISIONS.md`).
 
 ## Cum rulezi proiectul local
 
@@ -70,6 +80,14 @@ Rebecca, nu se înregistrează singuri).
    update public.users set role = 'admin' where email = 'email-ul Rebeccăi';
    ```
 3. Loghează-te în aplicație cu acel email și parolă.
+
+### Date de test (seed)
+
+Ca să ai ceva de văzut/testat imediat (mai ales pe ecranul de prezență),
+rulează în Supabase Studio → **SQL Editor** conținutul fișierului
+[`drizzle/seed.sql`](./drizzle/seed.sql). Adaugă 3 grupe, 10 copii, 5
+ședințe (două programate azi) și 2 abonamente. Sigur de rulat de mai
+multe ori.
 
 ## Alte comenzi utile
 
