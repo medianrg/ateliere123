@@ -179,14 +179,14 @@ consumă la fel din abonament: una.
 **Reguli:**
 - Intervalele de vârstă se pot suprapune (11-12 și 11-13 pot coexista). Aplicația
   nu se opune, pentru că realitatea nu se opune.
-- Atribuirea copilului la grupă e **întotdeauna manuală**. Fără sugestii
+- Atribuirea copilului la atelier e **întotdeauna manuală**. Fără sugestii
   automate pe bază de vârstă — cu intervale care se suprapun ar genera alerte
   false și Rebecca ar învăța să le ignore.
-- O grupă arhivată dispare din ecranele de lucru, dar sesiunile și prezențele
-  istorice rămân legate de ea. Grupa 13-15 din 2025 trebuie să existe în veci în
-  istoric.
-- Dacă o grupă se „împarte" în două (13-15 → 11-12 + 14-16), asta înseamnă:
-  arhivezi vechea grupă, creezi două noi, muți copiii. Nu redenumești.
+- Un atelier arhivat dispare din ecranele de lucru, dar sesiunile și prezențele
+  istorice rămân legate de el. Atelierul 13-15 din 2025 trebuie să existe în veci
+  în istoric.
+- Dacă un atelier se „împarte" în două (13-15 → 11-12 + 14-16), asta înseamnă:
+  arhivezi vechiul atelier, creezi două noi, muți copiii. Nu redenumești.
 
 ### `children`
 | id | uuid PK |
@@ -277,7 +277,7 @@ de 6 ore care valorează 3 ședințe, tastează 6 ore și 3. Dacă vrea 4 întâ
 |---|---|---|
 | id | uuid PK | |
 | session_type_id | uuid FK → session_types | |
-| group_id | uuid FK → groups **nullable** | null = atelier cu participanți manuali |
+| workshop_id | uuid FK → workshops **nullable** | null = ședință cu participanți manuali |
 | title | text nullable | „Atelier de vacanță — Crăciun" |
 | date | date | |
 | start_time / end_time | time | durata e liberă: 1h30 sau 4h |
@@ -295,14 +295,15 @@ O ședință anulată nu consumă nimic din abonamente, dar rămâne vizibilă �
 | child_id | uuid FK |
 | added_by / added_at | |
 
-PK compus. Pentru atelierele legate de o grupă tabela rămâne goală —
-participanții se deduc din grupă. Se populează doar când `group_id` e null sau
-când Rebecca adaugă manual un copil în plus: atelier de vacanță, recuperare,
-frate venit o dată, copil de probă.
+PK compus. Pentru ședințele legate de un atelier tabela rămâne goală —
+participanții se deduc din înscrierile la atelier (`child_workshops`). Se
+populează doar când `workshop_id` e null sau când Rebecca adaugă manual un
+copil în plus: ședință de vacanță, recuperare, frate venit o dată, copil de
+probă.
 
-**De ce nu populăm tabela și pentru atelierele normale:** dacă un copil intră în
-grupă la mijlocul lunii, nu vrei să-l adaugi manual la 12 sesiuni viitoare.
-Grupa e sursa de adevăr pentru atelierele recurente.
+**De ce nu populăm tabela și pentru ședințele normale:** dacă un copil intră
+la un atelier la mijlocul lunii, nu vrei să-l adaugi manual la 12 ședințe
+viitoare. Înscrierea la atelier e sursa de adevăr pentru ședințele recurente.
 
 ### `subscriptions`
 | câmp | tip | note |
@@ -430,10 +431,10 @@ Se scrie la: modificare prezență, ștergere prezență, modificare abonament,
 | **Abonament** | un număr de ședințe cumpărate la un atelier | „8 ședințe" |
 
 **Durata unei ședințe e irelevantă.** O întâlnire de 1,5 ore și una de 6 ore
-sunt amândouă *o ședință*. Grupa 10-12 are ședințe de 2 ore (1,5 ore de lucru
-plus acomodare și joacă), grupa 14-18 are ședințe de 6 ore, comasate lunar
-pentru că adolescenții nu pot veni săptămânal. Pentru abonament, statistici și
-plăți, ambele contează la fel: unu.
+sunt amândouă *o ședință*. Atelierul 10-12 are ședințe de 2 ore (1,5 ore de
+lucru plus acomodare și joacă), atelierul 14-18 are ședințe de 6 ore, comasate
+lunar pentru că adolescenții nu pot veni săptămânal. Pentru abonament,
+statistici și plăți, ambele contează la fel: unu.
 
 **Nu există „grupe" ca entitate separată.** Atelierul *este* grupa. Un copil e
 înscris la „Atelier 10-12 ani", nu la o grupă dintr-un atelier. Un concept mai
@@ -504,9 +505,14 @@ SĂPTĂMÂNA VIITOARE
 
 Buton **„Generează sesiuni"**, nu proces automat în fundal.
 
-1. Rebecca alege grupa și perioada („septembrie 2026")
-2. Aplicația calculează din programul grupei și **arată lista propusă**
-3. Rebecca șterge din listă ce nu vrea (vacanțe, sărbători) și confirmă
+1. Rebecca alege atelierul și perioada („septembrie 2026")
+2. Aplicația calculează din programul atelierului (ritm, zi, oră) și **arată
+   lista propusă** — pentru un atelier `monthly`, calculul e „a N-a apariție a
+   zilei săptămânii în lună" (`month_week` + `weekday`)
+3. **Fiecare ședință propusă are data editabilă, nu doar ștergibilă.**
+   Rebecca vede propunerea, mută o dată dacă pică prost (vacanță, sărbătoare),
+   șterge ce nu vrea, apoi confirmă. Algoritmul e doar un punct de plecare,
+   nu o regulă.
 4. Sesiunile se creează
 
 Regenerarea nu suprascrie și nu șterge nimic: sesiunile care există deja sunt
@@ -521,8 +527,8 @@ de trei ori mai multă atenție decât oricare altul.
 
 **Cerințe:**
 - Se ajunge aici cu un tap din lista de ateliere, fără navigare suplimentară
-- Sus, clar: data, ora și numele grupei — Rebecca trebuie să știe unde e
-- Toți copiii grupei, listă verticală, **un singur tap = prezent**
+- Sus, clar: data, ora și numele atelierului — Rebecca trebuie să știe unde e
+- Toți copiii atelierului, listă verticală, **un singur tap = prezent**
 - Butoane mari, minim 44px înălțime — se folosește cu copiii pe cap
 - Lângă fiecare nume: indicator de abonament
   - 🟢 abonament valid, N ședințe rămase
@@ -530,13 +536,13 @@ de trei ori mai multă atenție decât oricare altul.
   - 🔴 expirat sau 0 ședințe → propune automat „drop-in"
 - Lângă fiecare nume: indicator foto — 🟢 `full` / 🟡 `masked` / 🔴 `none`
 - Salvare automată la fiecare tap, fără buton „Salvează"
-- Buton „**+ Adaugă copil**" — caută în toți copiii activi, nu doar în grupă.
+- Buton „**+ Adaugă copil**" — caută în toți copiii activi, nu doar în atelier.
   Necesar pentru recuperări, frați veniți o dată, copii noi de probă.
 - Dacă ședința consumă altceva decât 1 din abonament, se afișează clar sus
 - Funcționează pe telefon, în picioare, cu o mână
 - Ideal: funcționează și fără internet, sincronizează după (v1.5, nu blocant)
 
-**Ecran secundar, foarte cerut:** „Cine apare în poze — grupa de marți" —
+**Ecran secundar, foarte cerut:** „Cine apare în poze — atelierul de marți" —
 listă cu cele trei culori, ca Rebecca să verifice înainte de a posta pe Instagram.
 
 ---
@@ -643,9 +649,9 @@ niciun risc — e un mesaj către ea, nu către un client.
 
 ### Admin (Rebecca)
 - Dashboard: ateliere azi, abonamente care expiră în 7 zile, copii cu 0 ședințe, restanțieri
-- Copii: listă, adăugare, editare, mutare între grupe, dezactivare
+- Copii: listă, adăugare, editare, mutare între ateliere, dezactivare
 - Părinți: creare cont, legare la copil/copii, resetare parolă
-- Grupe și sesiuni: creare, programare recurentă, anulare
+- Ateliere și sesiuni: creare, programare recurentă, anulare
 - Prezențe: ecranul de mai sus + editare retroactivă
 - Abonamente: creare, vizualizare sold, istoric
 - Plăți: înregistrare, listă, filtrare pe lună
@@ -678,7 +684,7 @@ Row Level Security, layout de bază, deploy pe Vercel din GitHub.
 **Criteriu de acceptare:** Rebecca se loghează și vede un dashboard gol.
 
 ### Faza 1 — Nucleul administrativ ⭐ prioritate maximă
-Grupe (cu editare și arhivare), tipuri de atelier, copii, sesiuni normale și
+Ateliere (cu editare și arhivare), tipuri de atelier, copii, sesiuni normale și
 speciale, **ecranul de prezență**, acorduri GDPR.
 Fără abonamente, fără părinți, fără plăți.
 **Criteriu de acceptare:** Rebecca bifează prezența la un atelier real, de pe
@@ -715,7 +721,7 @@ anulare e ce face retragerea să însemne ceva.
 „Retrage" în 30 de secunde, iar părintele nu primește nimic și nu vede nimic.
 
 ### Faza 5 — Statistici și instrumente de comunicare
-- Rata de prezență pe grupă și pe copil (doar ateliere cu `counts_in_stats`)
+- Rata de prezență pe atelier și pe copil (doar ateliere cu `counts_in_stats`)
 - Copii cu absențe repetate (semnal de abandon)
 - Încasări pe lună, export CSV
 - Panoul „De trimis azi" + butoanele de trimitere manuală
@@ -735,7 +741,7 @@ notificări WhatsApp, aplicație mobilă nativă, facturare.
 
 1. **Niciodată DELETE.** Totul e `is_active = false`. Copiii pleacă și se întorc.
 2. **Migrări versionate în git.** Fără modificări manuale în Supabase Studio.
-3. **Seed data de la început** — 3 grupe, 10 copii, 5 sesiuni, 2 abonamente.
+3. **Seed data de la început** — 3 ateliere, 10 copii, 5 sesiuni, 2 abonamente.
    Fără date de test nu poți evalua dacă ecranul de prezență e rapid.
 4. **Import inițial.** Rebecca are datele acum într-un Excel sau caiet. Fă un
    import CSV rudimentar în Faza 1, altfel primele două zile sunt tastare
@@ -750,8 +756,8 @@ notificări WhatsApp, aplicație mobilă nativă, facturare.
 ## 9. Întrebări de rezolvat înainte de Faza 3
 
 - Cine creează conturile părinților — Rebecca manual, sau invitație pe email?
-- Ce se întâmplă când un copil trece de la o grupă la alta — abonamentul rămâne?
-  (Recomandarea mea: da, abonamentul aparține copilului, nu grupei.)
+- Ce se întâmplă când un copil trece de la un atelier la altul — abonamentul
+  rămâne? (Recomandarea mea: da, abonamentul aparține copilului, nu atelierului.)
 - Sesiunile se generează recurent (toate marțile din septembrie) sau una câte una?
 - Abonamentul se măsoară în **ședințe** sau în **ore**? Dacă atelierele variază
   între 2h și 8h, „8 ședințe" devine ambiguu pentru părinte. Recomandarea mea:
