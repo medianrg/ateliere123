@@ -52,6 +52,14 @@ export default async function ChildDetailPage({
         </form>
       </div>
 
+      <Link
+        href={`/dashboard/children/${id}/financiar`}
+        className="block rounded-lg border border-neutral-200 bg-white p-4 hover:bg-neutral-50"
+      >
+        <p className="font-medium">Fișa financiară →</p>
+        <p className="text-sm text-neutral-500">Abonamente, plăți, sold, istoric prezențe</p>
+      </Link>
+
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-neutral-500">Ateliere</h2>
 

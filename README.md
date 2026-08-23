@@ -12,12 +12,12 @@ Utilizatori: **Rebecca** (admin/instructor) și **părinții** copiilor înscri�
 - [`CLAUDE.md`](./CLAUDE.md) — instrucțiuni de lucru pentru implementare
   (stack tehnic, reguli de bază de date, mod de lucru pe faze).
 
-## Stadiu actual — Faza 1: Nucleul administrativ
+## Stadiu actual — Faza 2: Abonamente și plăți
 
 **Faza 0** (fundație): Next.js + Tailwind, autentificare Supabase, schema
 completă a bazei de date cu Row Level Security pe toate tabelele.
 
-**Faza 1** (nucleul administrativ) adaugă:
+**Faza 1** (nucleul administrativ):
 - **Ateliere** — programul + grupa de copii, cu ritm (săptămânal / la două
   săptămâni / lunar), preț pe ședință și preț drop-in, creare/editare/
   arhivare (`/dashboard/workshops`)
@@ -38,8 +38,25 @@ completă a bazei de date cu Row Level Security pe toate tabelele.
 - **Setări** — tipuri de ședință, mutate aici pentru că sunt configurare,
   nu lucru zilnic (`/dashboard/settings`)
 
-Fără abonamente, fără părinți, fără plăți — vin în Faza 2 și Faza 3 (vezi
-`PLAN.md` și deciziile notate în `DECISIONS.md`).
+**Faza 2** (abonamente și plăți) adaugă:
+- **Abonamente** — legate de un copil și un atelier, cu prețul copiat din
+  atelier la creare (dacă atelierul se scumpește mai târziu, abonamentele
+  deja vândute rămân la prețul vechi) (`/dashboard/subscriptions/new`)
+- **Sold derivat** — niciodată un contor: ședințele rămase se calculează
+  din prezențe, soldul din abonamente minus plăți, mereu recalculat, nu
+  stocat
+- **Plăți** — sumă + dată + metodă, manual (`/dashboard/payments/new`)
+- **Fișa financiară a copilului** — ședințe rămase, total de plată/achitat,
+  sold, listă de abonamente și plăți, istoric de prezențe
+  (`/dashboard/children/[id]/financiar`)
+- **„Cine are restanțe"** — copiii cu sold negativ, ordonați descrescător;
+  copiii `Scutit` nu apar niciodată aici, la nivel de interogare
+  (`/dashboard/subscriptions`)
+- **Indicator de abonament pe ecranul de prezență** — 🟢/🟡/🔴 lângă fiecare
+  copil, cu buton de plată drop-in când nu are abonament valid
+
+Fără părinți — vin în Faza 3, după pauza obligatorie de 2 săptămâni de
+folosire reală (vezi `PLAN.md` și deciziile notate în `DECISIONS.md`).
 
 ## Cum rulezi proiectul local
 
@@ -64,10 +81,10 @@ Fără abonamente, fără părinți, fără plăți — vin în Faza 2 și Faza 
    Asta creează toate tabelele din `PLAN.md` (copii, ateliere, prezențe,
    abonamente etc.), tipurile enum, politicile de securitate (RLS) și
    declanșatorul care creează automat un rând în `users` la fiecare
-   înregistrare nouă. Migrările se aplică **în ordine** — dacă ai rulat deja
-   proiectul înainte de redenumirea „grupă" → „atelier", rulează și
-   `drizzle/0002_workshops_rename.sql`, care mută toate datele existente
-   fără să șteargă nimic.
+   înregistrare nouă. Migrările se aplică **în ordine, 0000 → 0003** — dacă
+   ai rulat deja proiectul înainte de o fază anterioară, rulează și
+   migrările lipsă (`0002_workshops_rename.sql`, `0003_subscriptions_workshop.sql`);
+   niciuna nu șterge date existente.
 
 4. **Pornește serverul de dezvoltare:**
    ```bash
@@ -94,10 +111,12 @@ Rebecca, nu se înregistrează singuri).
 
 Ca să ai ceva de văzut/testat imediat (mai ales pe ecranul de prezență și
 pe calendar), rulează în Supabase Studio → **SQL Editor** conținutul
-fișierului [`drizzle/seed.sql`](./drizzle/seed.sql). Adaugă 3 ateliere
-(două săptămânale, unul lunar, cu prețuri diferite), 10 copii (unul
-înscris la două ateliere), ședințe pe ~2 luni — trecute și **nebifate**
-intenționat, ca să vezi alertele roșii din calendar — și 2 abonamente.
+fișierului [`drizzle/seed.sql`](./drizzle/seed.sql) — **după** ce ți-ai
+creat contul de administrator (pasul de mai sus). Adaugă 3 ateliere (două
+săptămânale, unul lunar, cu prețuri diferite), 10 copii (unul înscris la
+două ateliere), ședințe pe ~2 luni — trecute și **nebifate** intenționat,
+ca să vezi alertele roșii din calendar — și 3 abonamente, câte unul din
+fiecare culoare (🟢🟡🔴), plus 2 plăți, ca să vezi „Cine are restanțe".
 Sigur de rulat de mai multe ori.
 
 ## Alte comenzi utile

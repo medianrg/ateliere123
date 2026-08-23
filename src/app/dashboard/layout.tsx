@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Calendar" },
   { href: "/dashboard/children", label: "Copii" },
   { href: "/dashboard/workshops", label: "Ateliere" },
+  { href: "/dashboard/subscriptions", label: "Abonamente" },
   { href: "/dashboard/settings", label: "Setări" },
 ];
 

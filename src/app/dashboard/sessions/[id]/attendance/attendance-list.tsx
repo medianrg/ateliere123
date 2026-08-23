@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { setAttendance, toggleWaiveCredit } from "./actions";
 
 type AttendanceStatus = "present" | "absent" | "late" | null;
 type PhotoStatus = "full" | "masked" | "none";
+type TrafficLight = "green" | "yellow" | "red";
 
 export type RosterChild = {
   id: string;
@@ -14,6 +16,8 @@ export type RosterChild = {
   status: AttendanceStatus;
   waived: boolean;
   photoStatus: PhotoStatus;
+  /** null = ședință specială, fără atelier -> fără concept de abonament. */
+  subscriptionStatus: { color: TrafficLight; remaining: number } | null;
 };
 
 const PHOTO_DOT: Record<PhotoStatus, string> = {
@@ -28,12 +32,20 @@ const PHOTO_LABEL: Record<PhotoStatus, string> = {
   none: "fără poze",
 };
 
+const SUBSCRIPTION_DOT: Record<TrafficLight, string> = {
+  green: "bg-green-500",
+  yellow: "bg-yellow-400",
+  red: "bg-red-500",
+};
+
 export function AttendanceList({
   sessionId,
   initialRoster,
+  dropInPrice,
 }: {
   sessionId: string;
   initialRoster: RosterChild[];
+  dropInPrice?: string;
 }) {
   const [roster, setRoster] = useState(initialRoster);
 
@@ -44,6 +56,7 @@ export function AttendanceList({
           key={child.id}
           sessionId={sessionId}
           child={child}
+          dropInPrice={dropInPrice}
           onChange={(patch) =>
             setRoster((prev) =>
               prev.map((c) => (c.id === child.id ? { ...c, ...patch } : c)),
@@ -58,10 +71,12 @@ export function AttendanceList({
 function AttendanceRow({
   sessionId,
   child,
+  dropInPrice,
   onChange,
 }: {
   sessionId: string;
   child: RosterChild;
+  dropInPrice?: string;
   onChange: (patch: Partial<RosterChild>) => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -80,10 +95,25 @@ function AttendanceRow({
     });
   }
 
+  const needsDropIn = child.subscriptionStatus?.color === "red";
+
   return (
     <li className={cn("space-y-2 p-4", isPending && "opacity-60")}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
+          {child.subscriptionStatus && (
+            <span
+              className={cn(
+                "h-3 w-3 shrink-0 rounded-full",
+                SUBSCRIPTION_DOT[child.subscriptionStatus.color],
+              )}
+              title={
+                child.subscriptionStatus.color === "red"
+                  ? "fără abonament valid"
+                  : `${child.subscriptionStatus.remaining} ședințe rămase`
+              }
+            />
+          )}
           <span
             className={cn("h-3 w-3 shrink-0 rounded-full", PHOTO_DOT[child.photoStatus])}
             title={PHOTO_LABEL[child.photoStatus]}
@@ -92,6 +122,16 @@ function AttendanceRow({
             {child.first_name} {child.last_name}
           </span>
         </div>
+        {needsDropIn && child.status === "present" && dropInPrice && (
+          <Link
+            href={`/dashboard/payments/new?child=${child.id}&amount=${dropInPrice}&note=${encodeURIComponent(
+              "drop-in",
+            )}`}
+            className="shrink-0 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-200"
+          >
+            Plată drop-in {dropInPrice} lei
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2">

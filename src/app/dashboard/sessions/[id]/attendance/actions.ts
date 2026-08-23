@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { todayInBucharest } from "@/lib/date";
+import { fetchSubscriptionsWithUsage, pickCurrentSubscription } from "@/lib/finance";
 
 export async function setAttendance(
   sessionId: string,
@@ -11,16 +13,41 @@ export async function setAttendance(
   const supabase = await createClient();
 
   const [{ data: session }, { data: userRes }] = await Promise.all([
-    supabase.from("sessions").select("sessions_used_default").eq("id", sessionId).single(),
+    supabase.from("sessions").select("sessions_used_default, workshop_id").eq("id", sessionId).single(),
     supabase.auth.getUser(),
   ]);
+
+  let subscriptionId: string | null = null;
+  let sessionsUsed = session?.sessions_used_default ?? "1";
+  let isDropIn = false;
+
+  if (session?.workshop_id) {
+    const subsByChild = await fetchSubscriptionsWithUsage(supabase, [childId]);
+    const current = pickCurrentSubscription(
+      subsByChild.get(childId) ?? [],
+      session.workshop_id,
+      todayInBucharest(),
+    );
+    if (current) {
+      subscriptionId = current.id;
+    } else {
+      isDropIn = true;
+      sessionsUsed = "0";
+    }
+  } else {
+    // Ședință specială, fără atelier -> fără concept de abonament.
+    isDropIn = true;
+    sessionsUsed = "0";
+  }
 
   const { error } = await supabase.from("attendance").upsert(
     {
       session_id: sessionId,
       child_id: childId,
       status,
-      sessions_used: session?.sessions_used_default ?? "1",
+      sessions_used: sessionsUsed,
+      subscription_id: subscriptionId,
+      is_drop_in: isDropIn,
       marked_by: userRes.user?.id,
       marked_at: new Date().toISOString(),
     },

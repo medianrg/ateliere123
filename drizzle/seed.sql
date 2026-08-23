@@ -1,8 +1,10 @@
 -- Date de test: 3 ateliere (2 săptămânale, 1 lunar), 10 copii (unul înscris
 -- la două ateliere), ședințe pe ~2 luni (trecut + viitor, nebifate, ca să
--- vezi alertele roșii din calendar), 2 abonamente.
+-- vezi alertele roșii din calendar), 3 abonamente (câte unul din fiecare
+-- culoare) și 2 plăți.
 -- Rulează în Supabase Studio -> SQL Editor, DUPĂ ce ai aplicat toate
--- migrările din drizzle/ în ordine (inclusiv 0002_workshops_rename.sql).
+-- migrările din drizzle/ în ordine (0000 -> 0003) și DUPĂ ce ți-ai creat
+-- contul de administrator (secțiunea din README).
 -- Sigur de rulat de mai multe ori (id-uri fixe, ON CONFLICT DO NOTHING).
 
 -- session_types --------------------------------------------------------
@@ -110,8 +112,34 @@ where rn = 3
     where s.workshop_id = '60000000-0000-0000-0000-000000000003' and s.date = saturdays.d
   );
 
--- subscriptions (doar date, fără ecran dedicat până în Faza 2) -------------
-insert into public.subscriptions (id, child_id, name, total_credits, price, start_date, end_date, status) values
-  ('50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Abonament 8 ședințe', 8, 480, current_date - 14, current_date + 60, 'active'),
-  ('50000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000004', 'Abonament 8 ședințe', 8, 480, current_date - 14, current_date + 60, 'active')
+-- subscriptions: câte unul din fiecare culoare, ca să vezi indicatorul pe
+-- ecranul de prezență -- 🟢 Maria (multe ședințe, departe de expirare),
+-- 🟡 Andrei (o singură ședință în abonament -> "mai are 1"),
+-- 🔴 Ioana (abonament expirat). Restul copiilor nu au abonament deloc, ceea
+-- ce arată tot 🔴 și propune drop-in -- e cazul implicit, nu trebuie seedat.
+insert into public.subscriptions (
+  id, child_id, workshop_id, name, total_sessions, price_per_session, price, start_date, end_date, status
+) values
+  ('50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000001', 'Abonament 8 ședințe', 8, 60, 480,
+    current_date - 14, current_date + 60, 'active'),
+  ('50000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002',
+    '60000000-0000-0000-0000-000000000001', 'Abonament 1 ședință', 1, 60, 60,
+    current_date - 7, current_date + 30, 'active'),
+  ('50000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003',
+    '60000000-0000-0000-0000-000000000001', 'Abonament 8 ședințe (expirat)', 8, 60, 480,
+    current_date - 90, current_date - 10, 'expired')
+on conflict (id) do nothing;
+
+-- payments: Maria e la zi; Ioana a plătit doar parțial -> restanță, ca să
+-- vezi ecranul "Cine are restanțe". Presupune că există deja un cont admin
+-- (secțiunea "Primul cont de administrator" din README) -- recorded_by nu
+-- poate fi null.
+insert into public.payments (id, child_id, subscription_id, amount, paid_at, method, note, recorded_by) values
+  ('70000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
+    '50000000-0000-0000-0000-000000000001', 480, current_date - 13, 'cash', null,
+    (select id from public.users where role = 'admin' limit 1)),
+  ('70000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003',
+    '50000000-0000-0000-0000-000000000003', 200, current_date - 89, 'transfer', null,
+    (select id from public.users where role = 'admin' limit 1))
 on conflict (id) do nothing;
