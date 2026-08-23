@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 
 type SessionTypeFormValues = {
   name?: string;
-  suggested_credit_cost?: string | null;
+  suggested_sessions_used?: string | null;
   counts_in_stats?: boolean;
 };
 
@@ -27,16 +27,16 @@ export function SessionTypeForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="suggested_credit_cost">
+        <Label htmlFor="suggested_sessions_used">
           Cost sugerat (ședințe) — doar pre-completează formularul sesiunii
         </Label>
         <Input
-          id="suggested_credit_cost"
-          name="suggested_credit_cost"
+          id="suggested_sessions_used"
+          name="suggested_sessions_used"
           type="number"
           step="0.5"
           min="0"
-          defaultValue={initial?.suggested_credit_cost ?? undefined}
+          defaultValue={initial?.suggested_sessions_used ?? undefined}
         />
       </div>
 

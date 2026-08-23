@@ -11,7 +11,7 @@ export async function setAttendance(
   const supabase = await createClient();
 
   const [{ data: session }, { data: userRes }] = await Promise.all([
-    supabase.from("sessions").select("credit_cost").eq("id", sessionId).single(),
+    supabase.from("sessions").select("sessions_used_default").eq("id", sessionId).single(),
     supabase.auth.getUser(),
   ]);
 
@@ -20,7 +20,7 @@ export async function setAttendance(
       session_id: sessionId,
       child_id: childId,
       status,
-      credits_used: session?.credit_cost ?? "1",
+      sessions_used: session?.sessions_used_default ?? "1",
       marked_by: userRes.user?.id,
       marked_at: new Date().toISOString(),
     },
@@ -41,13 +41,13 @@ export async function toggleWaiveCredit(
 
   const { data: session } = await supabase
     .from("sessions")
-    .select("credit_cost")
+    .select("sessions_used_default")
     .eq("id", sessionId)
     .single();
 
   const { error } = await supabase
     .from("attendance")
-    .update({ credits_used: waive ? 0 : session?.credit_cost ?? "1" })
+    .update({ sessions_used: waive ? 0 : session?.sessions_used_default ?? "1" })
     .eq("session_id", sessionId)
     .eq("child_id", childId);
 
