@@ -19,13 +19,13 @@ export default async function AddParticipantPage({
     id: string;
     first_name: string;
     last_name: string;
-    groups: { name: string } | null;
+    child_workshops: { left_at: string | null; workshops: { name: string } | null }[];
   };
 
   const supabase = await createClient();
   let query = supabase
     .from("children")
-    .select("id, first_name, last_name, groups(name)")
+    .select("id, first_name, last_name, child_workshops(left_at, workshops(name))")
     .eq("is_active", true)
     .order("last_name")
     .limit(30);
@@ -66,7 +66,13 @@ export default async function AddParticipantPage({
               <p className="font-medium">
                 {child.first_name} {child.last_name}
               </p>
-              <p className="text-sm text-neutral-500">{child.groups?.name ?? "fără grupă"}</p>
+              <p className="text-sm text-neutral-500">
+                {child.child_workshops
+                  .filter((cw) => !cw.left_at)
+                  .map((cw) => cw.workshops?.name)
+                  .filter(Boolean)
+                  .join(", ") || "fără atelier"}
+              </p>
             </div>
             <form action={addAndReturn.bind(null, child.id)}>
               <Button type="submit" size="sm">

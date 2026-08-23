@@ -18,7 +18,6 @@ export async function createChild(formData: FormData) {
       first_name: str(formData, "first_name"),
       last_name: str(formData, "last_name"),
       birth_date: str(formData, "birth_date"),
-      group_id: str(formData, "group_id"),
       payment_status: str(formData, "payment_status") ?? "standard",
       notes: str(formData, "notes"),
     })
@@ -26,6 +25,17 @@ export async function createChild(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
+
+  const workshopId = str(formData, "workshop_id");
+  if (workshopId) {
+    const { error: workshopError } = await supabase.from("child_workshops").insert({
+      child_id: child.id,
+      workshop_id: workshopId,
+      is_primary: true,
+      joined_at: new Date().toISOString().slice(0, 10),
+    });
+    if (workshopError) throw new Error(workshopError.message);
+  }
 
   // Every child gets a consents row from day one, defaulting to the most
   // restrictive option — nobody's photo goes out until Rebecca says so.
@@ -48,7 +58,6 @@ export async function updateChild(childId: string, formData: FormData) {
       first_name: str(formData, "first_name"),
       last_name: str(formData, "last_name"),
       birth_date: str(formData, "birth_date"),
-      group_id: str(formData, "group_id"),
       payment_status: str(formData, "payment_status") ?? "standard",
       notes: str(formData, "notes"),
     })
@@ -87,6 +96,62 @@ export async function updateConsent(childId: string, formData: FormData) {
       paper_reference: str(formData, "paper_reference"),
     })
     .eq("child_id", childId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/children/${childId}`);
+}
+
+// --- înscrieri la ateliere (child_workshops) --------------------------
+
+export async function enrollInWorkshop(childId: string, formData: FormData) {
+  const supabase = await createClient();
+  const workshopId = str(formData, "workshop_id");
+  if (!workshopId) return;
+
+  const { error } = await supabase.from("child_workshops").upsert(
+    {
+      child_id: childId,
+      workshop_id: workshopId,
+      is_primary: false,
+      joined_at: new Date().toISOString().slice(0, 10),
+      left_at: null,
+    },
+    { onConflict: "child_id,workshop_id" },
+  );
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/children/${childId}`);
+}
+
+export async function setPrimaryWorkshop(childId: string, workshopId: string) {
+  const supabase = await createClient();
+
+  const { error: clearError } = await supabase
+    .from("child_workshops")
+    .update({ is_primary: false })
+    .eq("child_id", childId);
+  if (clearError) throw new Error(clearError.message);
+
+  const { error } = await supabase
+    .from("child_workshops")
+    .update({ is_primary: true })
+    .eq("child_id", childId)
+    .eq("workshop_id", workshopId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/children/${childId}`);
+}
+
+export async function leaveWorkshop(childId: string, workshopId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("child_workshops")
+    .update({ left_at: new Date().toISOString().slice(0, 10) })
+    .eq("child_id", childId)
+    .eq("workshop_id", workshopId);
 
   if (error) throw new Error(error.message);
 

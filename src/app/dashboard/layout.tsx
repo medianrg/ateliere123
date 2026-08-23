@@ -4,11 +4,10 @@ import { signOut } from "./actions";
 import { Button } from "@/components/ui/button";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Azi" },
-  { href: "/dashboard/sessions", label: "Ședințe" },
+  { href: "/dashboard", label: "Calendar" },
   { href: "/dashboard/children", label: "Copii" },
-  { href: "/dashboard/groups", label: "Grupe" },
-  { href: "/dashboard/session-types", label: "Tipuri atelier" },
+  { href: "/dashboard/workshops", label: "Ateliere" },
+  { href: "/dashboard/settings", label: "Setări" },
 ];
 
 export default async function DashboardLayout({

@@ -10,7 +10,6 @@ type ChildFormValues = {
   first_name?: string;
   last_name?: string;
   birth_date?: string | null;
-  group_id?: string | null;
   payment_status?: string;
   notes?: string | null;
 };
@@ -18,12 +17,15 @@ type ChildFormValues = {
 export function ChildForm({
   action,
   initial,
-  groups,
+  workshops,
   submitLabel,
 }: {
   action: (formData: FormData) => void;
   initial?: ChildFormValues;
-  groups: { id: string; name: string }[];
+  /** Dacă e prezent, formularul arată și alegerea atelierului principal —
+   * folosit doar la creare. La editare, atelierele se gestionează separat,
+   * pentru că un copil poate fi la mai multe simultan. */
+  workshops?: { id: string; name: string }[];
   submitLabel: string;
 }) {
   return (
@@ -49,17 +51,19 @@ export function ChildForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="group_id">Grupă</Label>
-        <Select id="group_id" name="group_id" defaultValue={initial?.group_id ?? ""}>
-          <option value="">fără grupă</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {workshops && (
+        <div className="space-y-1.5">
+          <Label htmlFor="workshop_id">Atelier</Label>
+          <Select id="workshop_id" name="workshop_id" defaultValue="">
+            <option value="">fără atelier deocamdată</option>
+            {workshops.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="payment_status">Statut plată</Label>

@@ -8,48 +8,50 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { todayInBucharest } from "@/lib/date";
 
-type Group = { id: string; name: string };
-type SessionType = { id: string; name: string; suggested_credit_cost: string | null };
+type Workshop = { id: string; name: string };
+type SessionType = { id: string; name: string; suggested_sessions_used: string | null };
 
 export function SessionForm({
   action,
-  groups,
+  workshops,
   sessionTypes,
+  defaultWorkshopId,
 }: {
   action: (formData: FormData) => void;
-  groups: Group[];
+  workshops: Workshop[];
   sessionTypes: SessionType[];
+  defaultWorkshopId?: string;
 }) {
-  const creditCostRef = useRef<HTMLInputElement>(null);
+  const sessionsUsedRef = useRef<HTMLInputElement>(null);
 
   function handleTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const type = sessionTypes.find((t) => t.id === e.target.value);
-    if (type?.suggested_credit_cost != null && creditCostRef.current) {
-      creditCostRef.current.value = type.suggested_credit_cost;
+    if (type?.suggested_sessions_used != null && sessionsUsedRef.current) {
+      sessionsUsedRef.current.value = type.suggested_sessions_used;
     }
   }
 
   return (
     <form action={action} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="group_id">Grupă</Label>
-        <Select id="group_id" name="group_id" defaultValue="">
-          <option value="">fără grupă — atelier special (participanți manuali)</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
+        <Label htmlFor="workshop_id">Atelier</Label>
+        <Select id="workshop_id" name="workshop_id" defaultValue={defaultWorkshopId ?? ""}>
+          <option value="">fără atelier — ședință specială (participanți manuali)</option>
+          {workshops.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
             </option>
           ))}
         </Select>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="title">Titlu (opțional, util mai ales pentru ateliere speciale)</Label>
+        <Label htmlFor="title">Titlu (opțional, util mai ales pentru ședințe speciale)</Label>
         <Input id="title" name="title" placeholder="ex. Atelier de vacanță — Crăciun" />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="session_type_id">Tip atelier</Label>
+        <Label htmlFor="session_type_id">Tip ședință</Label>
         <Select id="session_type_id" name="session_type_id" required onChange={handleTypeChange}>
           <option value="">alege tipul</option>
           {sessionTypes.map((t) => (
@@ -77,11 +79,11 @@ export function SessionForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="credit_cost">Câte ședințe consumă</Label>
+        <Label htmlFor="sessions_used_default">Câte ședințe consumă</Label>
         <Input
-          ref={creditCostRef}
-          id="credit_cost"
-          name="credit_cost"
+          ref={sessionsUsedRef}
+          id="sessions_used_default"
+          name="sessions_used_default"
           type="number"
           step="0.5"
           min="0"

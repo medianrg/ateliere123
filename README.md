@@ -18,19 +18,25 @@ Utilizatori: **Rebecca** (admin/instructor) și **părinții** copiilor înscri�
 completă a bazei de date cu Row Level Security pe toate tabelele.
 
 **Faza 1** (nucleul administrativ) adaugă:
-- **Grupe** — creare, editare, arhivare (`/dashboard/groups`)
-- **Tipuri de atelier** — etichete simple (`/dashboard/session-types`)
-- **Copii** — listă, adăugare, editare, mutare între grupe, dezactivare,
-  plus **acordul GDPR** (statut foto, tag social) per copil
-  (`/dashboard/children`)
-- **Ședințe** — normale (legate de o grupă) și speciale (participanți
-  manuali), creare și anulare (`/dashboard/sessions`)
+- **Ateliere** — programul + grupa de copii, cu ritm (săptămânal / la două
+  săptămâni / lunar), preț pe ședință și preț drop-in, creare/editare/
+  arhivare (`/dashboard/workshops`)
+- **Copii** — listă, adăugare, editare, un copil poate fi înscris la mai
+  multe ateliere simultan (`child_workshops`), dezactivare, plus
+  **acordul GDPR** (statut foto, tag social) per copil (`/dashboard/children`)
+- **Ședințe** — normale (legate de un atelier) și speciale (participanți
+  manuali), creare individuală (`/dashboard/sessions/new`) sau în bloc cu
+  **„Generează ședințe"** (`/dashboard/sessions/generate`) pe baza ritmului
+  atelierului, cu previzualizare editabilă înainte de confirmare
 - **Ecranul de prezență** — cel mai important din aplicație: un tap =
   prezent, salvare automată, indicator foto (GDPR) lângă fiecare copil,
   buton „+ Adaugă copil" pentru recuperări/frați/copii de probă
   (`/dashboard/sessions/[id]/attendance`)
-- Dashboard-ul de start arată direct ședințele de azi, fiecare cu un link
-  spre ecranul ei de prezență — fără navigare
+- **Calendarul** (ecranul de start) — ședințele grupate pe săptămâni;
+  ședințele trecute nebifate apar în roșu, sus — cel mai util semnal din
+  aplicație (`/dashboard`)
+- **Setări** — tipuri de ședință, mutate aici pentru că sunt configurare,
+  nu lucru zilnic (`/dashboard/settings`)
 
 Fără abonamente, fără părinți, fără plăți — vin în Faza 2 și Faza 3 (vezi
 `PLAN.md` și deciziile notate în `DECISIONS.md`).
@@ -55,10 +61,13 @@ Fără abonamente, fără părinți, fără plăți — vin în Faza 2 și Faza 
    ```bash
    npm run db:migrate
    ```
-   Asta creează toate tabelele din `PLAN.md` (copii, grupe, prezențe,
+   Asta creează toate tabelele din `PLAN.md` (copii, ateliere, prezențe,
    abonamente etc.), tipurile enum, politicile de securitate (RLS) și
    declanșatorul care creează automat un rând în `users` la fiecare
-   înregistrare nouă.
+   înregistrare nouă. Migrările se aplică **în ordine** — dacă ai rulat deja
+   proiectul înainte de redenumirea „grupă" → „atelier", rulează și
+   `drizzle/0002_workshops_rename.sql`, care mută toate datele existente
+   fără să șteargă nimic.
 
 4. **Pornește serverul de dezvoltare:**
    ```bash
@@ -83,11 +92,13 @@ Rebecca, nu se înregistrează singuri).
 
 ### Date de test (seed)
 
-Ca să ai ceva de văzut/testat imediat (mai ales pe ecranul de prezență),
-rulează în Supabase Studio → **SQL Editor** conținutul fișierului
-[`drizzle/seed.sql`](./drizzle/seed.sql). Adaugă 3 grupe, 10 copii, 5
-ședințe (două programate azi) și 2 abonamente. Sigur de rulat de mai
-multe ori.
+Ca să ai ceva de văzut/testat imediat (mai ales pe ecranul de prezență și
+pe calendar), rulează în Supabase Studio → **SQL Editor** conținutul
+fișierului [`drizzle/seed.sql`](./drizzle/seed.sql). Adaugă 3 ateliere
+(două săptămânale, unul lunar, cu prețuri diferite), 10 copii (unul
+înscris la două ateliere), ședințe pe ~2 luni — trecute și **nebifate**
+intenționat, ca să vezi alertele roșii din calendar — și 2 abonamente.
+Sigur de rulat de mai multe ori.
 
 ## Alte comenzi utile
 

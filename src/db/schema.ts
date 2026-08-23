@@ -87,6 +87,13 @@ export const notificationStatusEnum = pgEnum("notification_status", [
   "failed",
 ]);
 
+export const workshopFrequencyEnum = pgEnum("workshop_frequency", [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "none",
+]);
+
 // --- users -----------------------------------------------------------------
 // One row per authenticated person, keyed to auth.users(id). A trigger
 // (see migrations/0001_rls_policies.sql) creates this row automatically on
@@ -105,15 +112,27 @@ export const users = pgTable("users", {
     .defaultNow(),
 });
 
-// --- groups ------------------------------------------------------------
-export const groups = pgTable("groups", {
+// --- workshops -----------------------------------------------------------
+// An atelier is both the schedule and the group of children — there is no
+// separate "grupă" entity. See PLAN.md "Terminologie".
+export const workshops = pgTable("workshops", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   minAge: integer("min_age"),
   maxAge: integer("max_age"),
+  pricePerSession: numeric("price_per_session", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
+  dropInPrice: numeric("drop_in_price", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
   color: text("color"),
-  defaultDay: text("default_day"),
-  defaultTime: time("default_time"),
+  frequency: workshopFrequencyEnum("frequency").notNull().default("weekly"),
+  weekday: integer("weekday"), // 1-7
+  startTime: time("start_time"),
+  durationMin: integer("duration_min"), // informativ, nu intră în niciun calcul
+  monthWeek: integer("month_week"), // doar pentru frequency='monthly'
+  sessionsPerMonth: integer("sessions_per_month"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
 });
@@ -124,7 +143,6 @@ export const children = pgTable("children", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   birthDate: date("birth_date"),
-  groupId: uuid("group_id").references(() => groups.id),
   enrolledAt: date("enrolled_at").notNull().defaultNow(),
   paymentStatus: paymentStatusEnum("payment_status")
     .notNull()
@@ -133,6 +151,25 @@ export const children = pgTable("children", {
   isActive: boolean("is_active").notNull().default(true),
   notes: text("notes"),
 });
+
+// --- child_workshops (link table) ---------------------------------------
+// A child can attend more than one workshop ("10-12 Marți" and "10-12
+// Joi" can both exist). is_primary marks the one shown in lists.
+export const childWorkshops = pgTable(
+  "child_workshops",
+  {
+    childId: uuid("child_id")
+      .notNull()
+      .references(() => children.id, { onDelete: "cascade" }),
+    workshopId: uuid("workshop_id")
+      .notNull()
+      .references(() => workshops.id, { onDelete: "cascade" }),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    joinedAt: date("joined_at"),
+    leftAt: date("left_at"),
+  },
+  (table) => [primaryKey({ columns: [table.childId, table.workshopId] })],
+);
 
 // --- parent_child (link table) -----------------------------------------
 export const parentChild = pgTable(
@@ -170,7 +207,7 @@ export const consents = pgTable("consents", {
 export const sessionTypes = pgTable("session_types", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  suggestedCreditCost: numeric("suggested_credit_cost", {
+  suggestedSessionsUsed: numeric("suggested_sessions_used", {
     precision: 6,
     scale: 2,
   }),
@@ -184,12 +221,15 @@ export const sessions = pgTable("sessions", {
   sessionTypeId: uuid("session_type_id")
     .notNull()
     .references(() => sessionTypes.id),
-  groupId: uuid("group_id").references(() => groups.id),
+  workshopId: uuid("workshop_id").references(() => workshops.id),
   title: text("title"),
   date: date("date").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
-  creditCost: numeric("credit_cost", { precision: 6, scale: 2 })
+  sessionsUsedDefault: numeric("sessions_used_default", {
+    precision: 6,
+    scale: 2,
+  })
     .notNull()
     .default("1"),
   topic: text("topic"),
@@ -250,7 +290,7 @@ export const attendance = pgTable(
       .notNull()
       .references(() => children.id, { onDelete: "cascade" }),
     status: attendanceStatusEnum("status").notNull(),
-    creditsUsed: numeric("credits_used", { precision: 6, scale: 2 })
+    sessionsUsed: numeric("sessions_used", { precision: 6, scale: 2 })
       .notNull()
       .default("0"),
     subscriptionId: uuid("subscription_id").references(

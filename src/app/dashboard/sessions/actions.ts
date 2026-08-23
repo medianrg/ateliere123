@@ -16,12 +16,12 @@ export async function createSession(formData: FormData) {
     .from("sessions")
     .insert({
       session_type_id: str(formData, "session_type_id"),
-      group_id: str(formData, "group_id"),
+      workshop_id: str(formData, "workshop_id"),
       title: str(formData, "title"),
       date: str(formData, "date"),
       start_time: str(formData, "start_time"),
       end_time: str(formData, "end_time"),
-      credit_cost: str(formData, "credit_cost") ?? "1",
+      sessions_used_default: str(formData, "sessions_used_default") ?? "1",
       topic: str(formData, "topic"),
       capacity: str(formData, "capacity"),
       notes: str(formData, "notes"),
@@ -31,7 +31,6 @@ export async function createSession(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/dashboard/sessions");
   revalidatePath("/dashboard");
   redirect(`/dashboard/sessions/${session.id}/attendance`);
 }
@@ -46,15 +45,14 @@ export async function cancelSession(sessionId: string) {
 
   if (error) throw new Error(error.message);
 
-  // A cancelled session never consumes credits, no matter what was marked
-  // before it was cancelled.
+  // O ședință anulată nu consumă nimic din abonamente, indiferent ce era
+  // bifat înainte de anulare.
   const { error: attendanceError } = await supabase
     .from("attendance")
-    .update({ credits_used: 0 })
+    .update({ sessions_used: 0 })
     .eq("session_id", sessionId);
   if (attendanceError) throw new Error(attendanceError.message);
 
-  revalidatePath("/dashboard/sessions");
   revalidatePath("/dashboard");
 }
 
@@ -68,6 +66,5 @@ export async function reopenSession(sessionId: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/dashboard/sessions");
   revalidatePath("/dashboard");
 }

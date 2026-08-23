@@ -11,7 +11,11 @@ type ChildRow = {
   birth_date: string | null;
   payment_status: "standard" | "partial" | "exempt";
   is_active: boolean;
-  groups: { id: string; name: string } | null;
+  child_workshops: {
+    workshop_id: string;
+    left_at: string | null;
+    workshops: { name: string } | null;
+  }[];
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -23,29 +27,31 @@ const PAYMENT_LABEL: Record<string, string> = {
 export default async function ChildrenPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; status?: string }>;
+  searchParams: Promise<{ workshop?: string; status?: string }>;
 }) {
-  const { group: groupFilter, status } = await searchParams;
+  const { workshop: workshopFilter, status } = await searchParams;
   const showInactive = status === "inactive";
 
   const supabase = await createClient();
 
-  const [{ data: groups }, childrenQuery] = await Promise.all([
-    supabase.from("groups").select("id, name").eq("is_active", true).order("sort_order"),
-    (async () => {
-      let query = supabase
-        .from("children")
-        .select("id, first_name, last_name, birth_date, payment_status, is_active, groups(id, name)")
-        .eq("is_active", !showInactive)
-        .order("last_name");
-
-      if (groupFilter) query = query.eq("group_id", groupFilter);
-
-      return query.returns<ChildRow[]>();
-    })(),
+  const [{ data: workshops }, { data: childrenData }] = await Promise.all([
+    supabase.from("workshops").select("id, name").eq("is_active", true).order("sort_order"),
+    supabase
+      .from("children")
+      .select(
+        "id, first_name, last_name, birth_date, payment_status, is_active, child_workshops(workshop_id, left_at, workshops(name))",
+      )
+      .eq("is_active", !showInactive)
+      .order("last_name")
+      .returns<ChildRow[]>(),
   ]);
 
-  const children = childrenQuery.data ?? [];
+  let children = childrenData ?? [];
+  if (workshopFilter) {
+    children = children.filter((c) =>
+      c.child_workshops.some((cw) => cw.workshop_id === workshopFilter && !cw.left_at),
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -57,11 +63,11 @@ export default async function ChildrenPage({
       </div>
 
       <form method="get" className="flex gap-3">
-        <Select name="group" defaultValue={groupFilter ?? ""} className="max-w-xs">
-          <option value="">Toate grupele</option>
-          {(groups ?? []).map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
+        <Select name="workshop" defaultValue={workshopFilter ?? ""} className="max-w-xs">
+          <option value="">Toate atelierele</option>
+          {(workshops ?? []).map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
             </option>
           ))}
         </Select>
@@ -78,21 +84,28 @@ export default async function ChildrenPage({
         <p className="text-sm text-neutral-500">Niciun copil găsit.</p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
-          {children.map((child) => (
-            <li key={child.id} className="p-4">
-              <Link
-                href={`/dashboard/children/${child.id}`}
-                className="font-medium hover:underline"
-              >
-                {child.first_name} {child.last_name}
-              </Link>
-              <p className="text-sm text-neutral-500">
-                {child.groups?.name ?? "fără grupă"}
-                {child.birth_date && ` · născut ${formatDate(child.birth_date)}`}
-                {` · ${PAYMENT_LABEL[child.payment_status]}`}
-              </p>
-            </li>
-          ))}
+          {children.map((child) => {
+            const workshopNames = child.child_workshops
+              .filter((cw) => !cw.left_at)
+              .map((cw) => cw.workshops?.name)
+              .filter(Boolean)
+              .join(", ");
+            return (
+              <li key={child.id} className="p-4">
+                <Link
+                  href={`/dashboard/children/${child.id}`}
+                  className="font-medium hover:underline"
+                >
+                  {child.first_name} {child.last_name}
+                </Link>
+                <p className="text-sm text-neutral-500">
+                  {workshopNames || "fără atelier"}
+                  {child.birth_date && ` · născut ${formatDate(child.birth_date)}`}
+                  {` · ${PAYMENT_LABEL[child.payment_status]}`}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

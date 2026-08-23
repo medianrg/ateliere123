@@ -4,8 +4,8 @@ import { createChild } from "../actions";
 
 export default async function NewChildPage() {
   const supabase = await createClient();
-  const { data: groups } = await supabase
-    .from("groups")
+  const { data: workshops } = await supabase
+    .from("workshops")
     .select("id, name")
     .eq("is_active", true)
     .order("sort_order");
@@ -13,7 +13,7 @@ export default async function NewChildPage() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-xl font-semibold">Copil nou</h1>
-      <ChildForm action={createChild} groups={groups ?? []} submitLabel="Adaugă" />
+      <ChildForm action={createChild} workshops={workshops ?? []} submitLabel="Adaugă" />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { setSessionTypeActive } from "./actions";
 type SessionType = {
   id: string;
   name: string;
-  suggested_credit_cost: string | null;
+  suggested_sessions_used: string | null;
   counts_in_stats: boolean;
   is_active: boolean;
 };
@@ -26,7 +26,7 @@ export default async function SessionTypesPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Tipuri de atelier</h1>
-        <Link href="/dashboard/session-types/new">
+        <Link href="/dashboard/settings/session-types/new">
           <Button>+ Tip nou</Button>
         </Link>
       </div>
@@ -58,12 +58,12 @@ function TypeList({ types }: { types: SessionType[] }) {
       {types.map((type) => (
         <li key={type.id} className="flex items-center justify-between gap-3 p-4">
           <div>
-            <Link href={`/dashboard/session-types/${type.id}`} className="font-medium hover:underline">
+            <Link href={`/dashboard/settings/session-types/${type.id}`} className="font-medium hover:underline">
               {type.name}
             </Link>
             <p className="text-sm text-neutral-500">
-              {type.suggested_credit_cost != null
-                ? `sugerează ${type.suggested_credit_cost} ședințe`
+              {type.suggested_sessions_used != null
+                ? `sugerează ${type.suggested_sessions_used} ședințe`
                 : "fără sugestie de cost"}
               {" · "}
               {type.counts_in_stats ? "intră în statistici" : "exclus din statistici"}
