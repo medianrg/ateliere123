@@ -263,8 +263,17 @@ export const subscriptions = pgTable("subscriptions", {
   childId: uuid("child_id")
     .notNull()
     .references(() => children.id, { onDelete: "cascade" }),
+  // Nullable la nivel de bază de date: un abonament vechi al unui copil
+  // care între timp a părăsit toate atelierele nu trebuie să rămână
+  // orfan sau imposibil de migrat. Formularul de creare cere mereu un
+  // atelier, dar coloana rămâne permisivă pentru cazuri vechi/marginale.
+  workshopId: uuid("workshop_id").references(() => workshops.id),
   name: text("name").notNull(),
-  totalCredits: numeric("total_credits", { precision: 6, scale: 2 }).notNull(),
+  totalSessions: integer("total_sessions").notNull(),
+  // Copiat din workshops.price_per_session la creare -- dacă Rebecca
+  // schimbă prețul atelierului mai târziu, abonamentele deja vândute nu
+  // se rescriu retroactiv. Vezi PLAN.md, tabela `subscriptions`.
+  pricePerSession: numeric("price_per_session", { precision: 10, scale: 2 }).notNull(),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   priceNote: text("price_note"),
   startDate: date("start_date").notNull(),

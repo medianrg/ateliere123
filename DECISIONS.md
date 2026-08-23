@@ -67,3 +67,41 @@ adaugă acum `workshop_id` și redenumește `total_credits` în
 `total_sessions`. Rămâne un subiect de Faza 2, când se construiește
 efectiv ecranul de abonamente — schimbarea se face atunci, testată cu
 adevărat, nu speculativ acum.
+
+## Faza 2 — abonamente și plăți
+
+**`subscriptions.workshop_id` e nullable la nivel de bază de date**, deși
+PLAN.md nu-l marchează explicit `nullable`. Motivul: un abonament vechi al
+unui copil care între timp a părăsit toate atelierele nu trebuie să
+rămână imposibil de migrat sau orfan. Formularul de creare cere mereu un
+atelier (`required` în HTML) — restricția practică e la nivel de
+interfață, nu de schemă, exact ca restul regulilor din proiect.
+
+**Abonamentele vechi (dinainte de Faza 2) au fost migrate cu aproximări,
+nu inventate din nimic.** `workshop_id` s-a completat din atelierul
+principal curent al copilului (`child_workshops.is_primary`); acolo unde
+copilul n-are niciun atelier, rămâne `null`. `price_per_session` s-a
+calculat din prețul curent al atelierului, sau — dacă nu există atelier —
+din `price / total_credits` al abonamentului respectiv. E o aproximare
+explicit asumată: nu exista această informație înainte de Faza 2, deci nu
+poate fi reconstituită exact.
+
+**Când un copil are mai multe abonamente valide simultan la același
+atelier** (nu ar trebui să se întâmple des, dar nu e interzis), se scade
+din cel care expiră cel mai curând — cel mai „urgent" de consumat. E o
+regulă simplă, previzibilă, și Rebecca poate oricând corecta manual din
+fișa financiară dacă nu e ce vrea.
+
+**„Trimite notificare de plată" nu a fost construit.** PLAN.md descrie
+acest buton la secțiunea „Fișa financiară a copilului", dar mesageria
+(inclusiv „De trimis azi" și `notifications_log`) e explicit Faza 5 în
+lista fazelor. Faza 2 cere doar „alerte vizuale" — ecranul „Cine are
+restanțe" le arată; trimiterea efectivă de mesaje vine mai târziu.
+
+**Ecranele financiare nu ascund încă meniul/butoanele pentru rolul
+`instructor`.** RLS blochează deja corect datele (un instructor nu vede
+niciun abonament sau plată, pentru că politicile sunt `is_admin()`, nu
+`is_admin_or_instructor()`) — dar interfața ar arăta în mod înșelător
+liste goale în loc de „nu ai acces", pentru că azi există un singur cont
+(Rebecca, admin) și nu s-a testat cu un cont de instructor real. De
+rafinat când rolul chiar se folosește.
