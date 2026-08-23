@@ -183,8 +183,8 @@ consumă la fel din abonament: una.
   automate pe bază de vârstă — cu intervale care se suprapun ar genera alerte
   false și Rebecca ar învăța să le ignore.
 - Un atelier arhivat dispare din ecranele de lucru, dar sesiunile și prezențele
-  istorice rămân legate de el. Atelierul 13-15 din 2025 trebuie să existe în veci
-  în istoric.
+  istorice rămân legate de el. Atelierul 13-15 din 2025 trebuie să existe în
+  veci în istoric.
 - Dacă un atelier se „împarte" în două (13-15 → 11-12 + 14-16), asta înseamnă:
   arhivezi vechiul atelier, creezi două noi, muți copiii. Nu redenumești.
 
@@ -267,12 +267,12 @@ poată filtra mai târziu. Nimic nu se întâmplă automat pe baza tipului.
 Seed: „Obișnuit" (sugerează 1, intră în statistici) și „Special" (sugerează 0,
 exclus din statistici). Restul le adaugă ea.
 
-Tot ce ține de structura atelierului — durată, câte ședințe, cât consumă — se
-introduce **pe sesiune**, manual, de fiecare dată. Dacă Rebecca vrea un atelier
-de 6 ore care valorează 3 ședințe, tastează 6 ore și 3. Dacă vrea 4 întâlniri de
-2 ore, creează 4 sesiuni de câte 1 ședință. Aplicația nu are opinii.
+Durata unei ședințe se introduce manual și nu afectează niciun calcul. O
+întâlnire de 6 ore consumă din abonament exact cât una de 1,5 ore: o ședință.
+Dacă Rebecca vrea vreodată altceva, poate edita `sessions_used` pentru o
+ședință anume. Aplicația nu deduce nimic din durată.
 
-### `sessions` — atelierul programat
+### `sessions` — ședințele (o întâlnire cu dată și oră)
 | câmp | tip | note |
 |---|---|---|
 | id | uuid PK | |
@@ -296,13 +296,12 @@ O ședință anulată nu consumă nimic din abonamente, dar rămâne vizibilă �
 | added_by / added_at | |
 
 PK compus. Pentru ședințele legate de un atelier tabela rămâne goală —
-participanții se deduc din înscrierile la atelier (`child_workshops`). Se
-populează doar când `workshop_id` e null sau când Rebecca adaugă manual un
-copil în plus: ședință de vacanță, recuperare, frate venit o dată, copil de
-probă.
+participanții se deduc din atelier. Se populează doar când `workshop_id` e null sau
+când Rebecca adaugă manual un copil în plus: atelier de vacanță, recuperare,
+frate venit o dată, copil de probă.
 
-**De ce nu populăm tabela și pentru ședințele normale:** dacă un copil intră
-la un atelier la mijlocul lunii, nu vrei să-l adaugi manual la 12 ședințe
+**De ce nu populăm tabela și pentru ședințele normale:** dacă un copil intră la
+un atelier la mijlocul lunii, nu vrei să-l adaugi manual la 12 ședințe
 viitoare. Înscrierea la atelier e sursa de adevăr pentru ședințele recurente.
 
 ### `subscriptions`
@@ -346,7 +345,7 @@ Un copil poate avea mai multe abonamente în istoric. Cel „curent" = cel activ
 | id | uuid PK |
 | session_id | uuid FK |
 | child_id | uuid FK |
-| status | enum | `present` / `absent` / `late` |
+| status | enum | `present` / `absent` |
 | sessions_used | numeric | implicit 1, **editabil de Rebecca** |
 | subscription_id | uuid FK nullable | null = drop-in sau plătit separat |
 | is_drop_in | boolean |
@@ -465,61 +464,151 @@ Calendar    Copii    Ateliere    Abonamente    Setări
   pentru că e cazul normal. Se afișează doar tipurile diferite.
 - **Cardul întreg e apăsabil**, nu doar un link gri într-un colț.
 - **Fiecare card de ședință arată:** ziua și data, ora, numele atelierului,
-  câți copii, și starea prezenței (bifat / nebifat).
+  câți copii, și starea prezenței (Completat / De completat).
 - **Scrie data explicit.** „Azi" fără „marți, 26 august" obligă utilizatorul să
   se uite la telefon ca să se orienteze.
 - **Contrast real pe acțiuni.** Gri deschis pe alb citește ca „dezactivat".
 
+## Tipare UX — nu inventăm nimic
+
+**Regula: fiecare ecran folosește un tipar consacrat.** Dacă un tip de interfață
+există deja în aplicații pe care oamenii le folosesc zilnic, îl copiem. Rebecca
+nu trebuie să învețe o aplicație nouă — trebuie să recunoască una pe care o știe
+deja.
+
+Când apare un ecran care nu e în lista de mai jos, întâi se caută tiparul
+standard pentru acel tip de problemă. Soluția inventată e ultima variantă, nu
+prima.
+
+| ecran | tipar | unde se vede |
+|---|---|---|
+| Calendar | bandă de zile + listă (agenda view) | Booksy, Fresha, Square Appointments, Google Calendar mobil |
+| Prezență | catalog cu toggle pe rând (roll call) | Google Classroom, ClassDojo, TeacherKit |
+| Listă copii | listă căutabilă, două rânduri per element | listă standard iOS / Material |
+| Fișa copilului | antet cu identitate + secțiuni sub el | orice ecran de profil |
+| Fișa financiară | extras de cont: sold sus, tranzacții dedesubt | aplicații bancare, Stripe, facturare |
+| Invitație părinte | invitație pe email + setare parolă la primul acces | Slack, Notion, Linear |
+| Feedback | ciornă cu salvare automată + publicare explicită | orice editor |
+| Anulare acțiune | mesaj scurt jos, cu „Anulează" | Gmail „Undo Send", Material Snackbar |
+| Formulare | etichetă deasupra câmpului, validare la ieșirea din câmp | Material Design, orice formular modern |
+| Navigație mobil | bară jos, maximum 5 elemente | standard iOS și Android |
+| Ecran gol | ce lipsește + o singură acțiune | standard „empty state" |
+
+**Reguli care decurg din asta:**
+
+- **Folosește componentele din shadcn/ui așa cum sunt.** Nu construi variante
+  proprii de dropdown, dialog, calendar sau tabel.
+- **Confirmările blocante se evită.** În loc de „Ești sigur? Da/Nu", execută
+  acțiunea și oferă „Anulează" într-un mesaj scurt. Mai puține clickuri, mai
+  puțină anxietate. Excepția: acțiuni chiar ireversibile.
+- **Ecranele goale nu rămân goale.** „Niciun copil înscris încă" plus butonul
+  „+ Adaugă copil". Un ecran gol fără explicație e locul unde utilizatorii se
+  blochează.
+- **Nu inventa iconițe.** lucide-react are tot ce trebuie, cu semnificațiile
+  pe care lumea le știe deja.
+- **Nimic nu se ascunde sub gesturi.** Swipe, long-press și shortcut-uri pot
+  exista ca scurtături, dar orice acțiune trebuie să aibă și un buton vizibil.
+
 ## Ecranul principal — calendarul
 
-**Corecție față de versiunea anterioară a planului:** aplicația NU se deschide
-pe „atelierul de azi". Clubul are ateliere două-trei zile pe săptămână, deci în
-majoritatea zilelor nu e nimic azi, iar Rebecca rămâne cu un ecran gol care nu-i
-spune ce să facă.
+**Corecție față de versiunea anterioară:** aplicația NU se deschide pe „ședința
+de azi". Clubul are ședințe două-trei zile pe săptămână, deci în majoritatea
+zilelor nu e nimic azi, iar Rebecca rămâne cu un ecran gol care nu-i spune ce
+să facă.
 
-**Ecranul de start e o listă de ateliere, grupată pe săptămâni:**
+### Vederea implicită: săptămâna
+
+Tiparul folosit de aplicațiile de programări (Booksy, Fresha, Square
+Appointments): o bandă cu zilele săptămânii sus, lista dedesubt.
 
 ```
-ASTĂZI
-  (dacă nu e nimic:)
-  Niciun atelier astăzi.
-  Următorul: marți, 26 august, 17:00 — 10-12 Marți   [Deschide]
+   ←     23 – 29 august 2026     →        [ Săptămână | Lună ]
 
-SĂPTĂMÂNA ACEASTA
-  Marți 26 aug, 17:00   10-12 Marți     12 copii   ✓ bifat
-  Joi   28 aug, 17:00   10-12 Joi        9 copii   — nebifat
-  Sâm   30 aug, 10:00   14-16 lunar      7 copii   — nebifat
+   L     M     M     J     V     S     D
+   24    25    26    27    28    29    30
+   •     •     •                             ← punct = are ședință
 
-SĂPTĂMÂNA VIITOARE
-  ...
+   ────────────────────────────────────────
+   ASTĂZI · duminică, 23 august
+   Nicio ședință astăzi.
+   Următoarea: luni, 24 august, 17:00        [ Deschide ]
 
-[ + Atelier nou ]   [ Generează sesiuni ]
+   DE COMPLETAT
+   ⚠ Miercuri 19 aug, 17:00
+     Atelier 10-12 Miercuri · 9 copii        [ Completează ]
+
+   SĂPTĂMÂNA ACEASTA
+   Luni 24 aug, 17:00
+     Atelier 10-12 Luni · 12 copii · Completat
+   Marți 25 aug, 17:00
+     Atelier 10-12 Marți · 11 copii · De completat
+   Miercuri 26 aug, 17:00
+     Atelier 14-18 · 7 copii · De completat
+
+   [ + Ședință nouă ]   [ Generează ședințe ]
 ```
 
-- Atelierele trecute **nebifate** apar în roșu, sus. Ăsta e cel mai util semnal
-  din toată aplicația: „ai uitat să bifezi joia trecută".
-- Se poate derula înapoi în istoric și înainte în viitor.
-- Un tap pe un atelier deschide ecranul de prezență.
+- Săgețile mută săptămâna înainte și înapoi. Săptămâna curentă e mereu punctul
+  de pornire.
+- **Ședințele trecute cu prezența necompletată apar sus, marcate.** E cel mai
+  util semnal din toată aplicația: „ai uitat să completezi miercurea trecută".
+  Rămân acolo până sunt completate.
+- Un tap pe card deschide ecranul de prezență. Cardul întreg, nu o săgeată.
 
-## Generarea sesiunilor recurente
+### Vederea alternativă: luna
 
-Buton **„Generează sesiuni"**, nu proces automat în fundal.
+Buton de comutare, plus dropdown de lună și an. Grilă lunară cu chip-uri mici
+pe zile.
+
+Rolul ei e altul decât al vederii săptămânale: verificarea de ansamblu după
+„Generează ședințe" — vezi dintr-o privire dacă ai lăsat ședințe în vacanță sau
+dacă ai uitat o săptămână.
+
+**De ce nu coloane pe luni, în stil kanban:** kanban grupează după *stare*, nu
+după timp. Cu ~12 ședințe pe lună, fiecare coloană devine o listă lungă de
+derulat, iar pe telefon vezi oricum o singură coloană — deci pierzi exact
+avantajul de a vedea mai mult odată. Banda de săptămână arată mai multă
+informație utilă pe același spațiu.
+
+### Cuvinte
+
+Nu folosi „bifat" și „nebifat" — sună tehnic și descriu un checkbox, nu o
+acțiune.
+
+| stare | text în interfață |
+|---|---|
+| prezența înregistrată | **Completat** |
+| prezența neînregistrată | **De completat** |
+| ședință viitoare | doar data și ora, fără etichetă |
+
+## Generarea ședințelor recurente
+
+Buton **„Generează ședințe"**, nu proces automat în fundal.
 
 1. Rebecca alege atelierul și perioada („septembrie 2026")
-2. Aplicația calculează din programul atelierului (ritm, zi, oră) și **arată
-   lista propusă** — pentru un atelier `monthly`, calculul e „a N-a apariție a
-   zilei săptămânii în lună" (`month_week` + `weekday`)
-3. **Fiecare ședință propusă are data editabilă, nu doar ștergibilă.**
-   Rebecca vede propunerea, mută o dată dacă pică prost (vacanță, sărbătoare),
-   șterge ce nu vrea, apoi confirmă. Algoritmul e doar un punct de plecare,
-   nu o regulă.
-4. Sesiunile se creează
+2. Aplicația calculează din ritmul atelierului și **arată lista propusă**
+3. Rebecca poate **edita data** fiecărei ședințe propuse, nu doar să o șteargă
+4. Confirmă, iar ședințele se creează
 
-Regenerarea nu suprascrie și nu șterge nimic: sesiunile care există deja sunt
-sărite, cele bifate rămân neatinse. Orice sesiune generată poate fi mutată,
-editată sau anulată individual după aceea.
+Pentru atelierele lunare, algoritmul e „a N-a apariție a zilei săptămânii în
+lună" (a treia sâmbătă etc.). Nu trebuie să fie perfect, tocmai pentru că
+există pasul de previzualizare.
 
-## Ecranul de bifat prezențe — al doilea ca importanță
+Regenerarea nu suprascrie și nu șterge nimic: ședințele existente sunt sărite,
+cele completate rămân neatinse.
+
+### Mutarea unei ședințe
+
+Rebecca trebuie să poată muta o ședință în altă zi (sărbătoare, boală, sală
+indisponibilă).
+
+- **Pe desktop:** drag and drop între zile, în vederea lunară.
+- **Pe telefon:** buton „Mută" cu selector de dată. Drag and drop pe mobil e
+  imprecis și duce la mutări accidentale.
+
+Mutarea nu afectează prezențele deja înregistrate.
+
+## Ecranul de prezență — al doilea ca importanță
 
 Riscul numărul unu al proiectului nu e tehnic. E ca Rebecca să renunțe la
 aplicație și să revină la caiet pentru că durează prea mult. Ecranul ăsta merită
@@ -753,17 +842,77 @@ notificări WhatsApp, aplicație mobilă nativă, facturare.
 
 ---
 
-## 9. Întrebări de rezolvat înainte de Faza 3
+## 9. Decizii luate pentru Faza 3
 
-- Cine creează conturile părinților — Rebecca manual, sau invitație pe email?
-- Ce se întâmplă când un copil trece de la un atelier la altul — abonamentul
-  rămâne? (Recomandarea mea: da, abonamentul aparține copilului, nu atelierului.)
-- Sesiunile se generează recurent (toate marțile din septembrie) sau una câte una?
-- Abonamentul se măsoară în **ședințe** sau în **ore**? Dacă atelierele variază
-  între 2h și 8h, „8 ședințe" devine ambiguu pentru părinte. Recomandarea mea:
-  rămâne în ședințe, iar Rebecca decide manual câte ședințe valorează un atelier
-  lung. Dar merită întrebată, pentru că afectează cum comunică ea cu părinții.
-- Un copil poate avea două abonamente active simultan? Dacă da, la bifare trebuie
-  ales din care se scade — o complicație reală a ecranului de prezență.
-- Ce vede părintele despre bani? Doar plățile făcute, sau și restanța? (Aș începe
-  cu plățile și soldul, fără prețul abonamentului — evită discuții inutile.)
+### Conturile părinților — prin invitație
+
+Nu se creează parole de către Rebecca.
+
+1. Pe fișa copilului, buton **„Invită părinte"**
+2. Rebecca introduce adresa de email
+3. Părintele primește un link de invitație
+4. La primul acces își setează singur parola și intră direct în contul copilului
+
+Tabela necesară:
+
+**`invitations`**
+
+| câmp | tip | note |
+|---|---|---|
+| id | uuid PK | |
+| child_id | uuid FK | |
+| email | text | |
+| token | text unique | link-ul de invitație |
+| expires_at | timestamptz | recomandat 14 zile |
+| accepted_at | timestamptz nullable | |
+| invited_by | uuid FK → users | |
+
+- O invitație expirată se poate retrimite cu un tap.
+- Dacă emailul aparține unui părinte care are deja cont, invitația **leagă
+  copilul de contul existent**, nu creează un cont nou. E cazul frecvent:
+  al doilea copil din aceeași familie.
+- Pe fișa copilului se vede starea: invitat / activ / neinvitat.
+
+### Un părinte, mai mulți copii
+
+Un părinte cu doi copii are **un singur cont** și vede ambii copii în el, cu un
+selector între ei. De asta legătura `parent_child` e many-to-many.
+
+Invers nu: un copil poate avea doi părinți cu conturi separate (părinți
+divorțați e un caz normal), fiecare vede același copil.
+
+### Un copil, un singur abonament activ
+
+Un copil nu are două abonamente active simultan. La crearea unuia nou, dacă
+există deja unul activ, aplicația **avertizează** — nu blochează:
+
+> „Maria are deja un abonament activ până pe 30 septembrie, cu 3 ședințe
+> rămase. Continui?"
+
+Avertisment, nu blocaj, conform principiului din secțiunea 2. Rebecca poate
+avea un motiv la care nu ne-am gândit.
+
+Abonamentul e legat de un atelier și **nu se transferă** între ateliere. Dacă un
+copil schimbă atelierul, se închide abonamentul vechi și se face unul nou.
+
+### Ce vede părintele despre bani
+
+| vede | nu vede |
+|---|---|
+| dacă are ceva de plătit și cât | prețul pe ședință al atelierului |
+| istoricul plăților: dată, sumă | `price_note` sau orice motiv de reducere |
+| ședințele consumate și cele rămase | situația altor copii |
+| data expirării abonamentului | notițele interne ale Rebeccăi |
+
+Un părinte al cărui copil are statut `Scutit` nu vede nicio referire la plată,
+nicio sumă, niciun sold. Ecranul lui arată doar prezențele și abonamentul.
+
+### Alte decizii
+
+- **Abonamentul se măsoară în ședințe**, nu în ore. Durata nu apare nicăieri în
+  calculul soldului.
+- **Ședințele se generează recurent**, din ritmul atelierului, cu previzualizare
+  editabilă înainte de confirmare.
+- **Prezența are două stări:** prezent sau absent. Nu există „întârziat" —
+  un status în plus înseamnă o decizie în plus pentru fiecare copil, iar
+  informația nu s-ar folosi nicăieri.

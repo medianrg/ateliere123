@@ -33,7 +33,7 @@ de a implementa.
 - **Migrări versionate în git.** Niciodată modificări manuale în Supabase Studio.
   Fiecare schimbare de schemă = un fișier de migrare comis.
 - **Niciodată DELETE.** Totul e `is_active = false`. Copiii pleacă și se întorc,
-  grupele se arhivează, istoricul rămâne intact.
+  atelierele se arhivează, istoricul rămâne intact.
 - **Fără contoare.** Soldul abonamentului și soldul financiar se calculează
   întotdeauna prin agregare din prezențe și plăți. Vezi PLAN.md secțiunea 3.
 - **Row Level Security activat pe toate tabelele.** Un părinte trebuie să nu
@@ -57,6 +57,41 @@ de a implementa.
 - **Mobile-first.** Ecranul de prezență se folosește pe telefon, în picioare,
   cu o mână. Butoane de minim 44px. Fără buton „Salvează" — salvare la fiecare
   tap.
+
+---
+
+## Tipare UX — folosim tipare consacrate, nu inventăm
+
+Fiecare ecran folosește un tipar existent în aplicații pe care oamenii le
+folosesc zilnic. Rebecca nu trebuie să învețe o interfață nouă, trebuie să
+recunoască una pe care o știe deja.
+
+| ecran | tipar | unde se vede |
+|---|---|---|
+| Calendar | bandă de zile + agenda view | Booksy, Fresha, Square |
+| Prezență | catalog cu toggle pe rând | Google Classroom, ClassDojo |
+| Listă copii | listă căutabilă, două rânduri per element | — |
+| Fișa copilului | antet de profil + secțiuni | — |
+| Fișa financiară | extras de cont: sold sus, tranzacții dedesubt | — |
+| Invitație | email + setare parolă la primul acces | Slack, Notion |
+| Feedback | ciornă cu autosave + publicare explicită | — |
+| Anulare acțiune | snackbar cu „Anulează" | Gmail Undo Send |
+| Formulare | etichetă deasupra câmpului, validare la blur | — |
+| Navigație mobil | bară jos, maximum 5 elemente | — |
+| Ecran gol | ce lipsește + o singură acțiune | — |
+
+Când apare un ecran care nu e în listă, caută întâi tiparul standard pentru
+acel tip de problemă. Soluția inventată e ultima variantă.
+
+Reguli:
+- Folosește componentele shadcn/ui așa cum sunt. Nu construi variante
+  proprii de dropdown, dialog, calendar sau tabel.
+- Evită confirmările blocante. În loc de „Ești sigur?", execută acțiunea și
+  oferă „Anulează" în snackbar. Excepție: acțiuni ireversibile.
+- Niciun ecran gol fără text explicativ și un buton de acțiune.
+- Iconițe doar din lucide-react, cu semnificațiile standard.
+- Nimic ascuns sub gesturi. Swipe și long-press pot fi scurtături, dar
+  fiecare acțiune are și un buton vizibil.
 
 ---
 
@@ -85,7 +120,7 @@ de a implementa.
 - Branch separat per fază: `faza-0-setup`, `faza-1-nucleu`, etc.
 - Commit-uri mici și dese, cu mesaj descriptiv.
 - La fiecare fază, actualizează `README.md` cu ce s-a construit și cum se rulează.
-- **Seed data de la prima fază:** 3 grupe, ~10 copii, ~5 sesiuni, 2 abonamente.
+- **Seed data de la prima fază:** 3 ateliere, ~10 copii, ~5 sesiuni, 2 abonamente.
   Fără date de test nu se poate evalua dacă ecranul de prezență e rapid.
 - Când o decizie de implementare nu e acoperită de PLAN.md, **întreabă**, nu
   presupune. Notează întrebarea în `DECISIONS.md`.
