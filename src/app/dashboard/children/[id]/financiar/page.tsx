@@ -191,7 +191,7 @@ export default async function ChildFinancialPage({
                     {session?.workshops?.name ?? session?.title ?? "—"}
                   </span>
                   <span className="text-neutral-500">
-                    {a.status === "present" ? "prezent" : a.status === "absent" ? "absent" : "întârziat"}
+                    {a.status === "present" ? "prezent" : "absent"}
                     {" · "}
                     {a.sessions_used} ședințe
                   </span>

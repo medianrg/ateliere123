@@ -32,9 +32,10 @@ completă a bazei de date cu Row Level Security pe toate tabelele.
   prezent, salvare automată, indicator foto (GDPR) lângă fiecare copil,
   buton „+ Adaugă copil" pentru recuperări/frați/copii de probă
   (`/dashboard/sessions/[id]/attendance`)
-- **Calendarul** (ecranul de start) — ședințele grupate pe săptămâni;
-  ședințele trecute nebifate apar în roșu, sus — cel mai util semnal din
-  aplicație (`/dashboard`)
+- **Calendarul** (ecranul de start) — bandă de zile + agendă săptămânală
+  (tiparul Booksy/Fresha), cu vedere lunară alternativă; secțiunea „De
+  completat" arată ședințele restante, cel mai util semnal din aplicație
+  (`/dashboard`)
 - **Setări** — tipuri de ședință, mutate aici pentru că sunt configurare,
   nu lucru zilnic (`/dashboard/settings`)
 
@@ -54,6 +55,18 @@ completă a bazei de date cu Row Level Security pe toate tabelele.
   (`/dashboard/subscriptions`)
 - **Indicator de abonament pe ecranul de prezență** — 🟢/🟡/🔴 lângă fiecare
   copil, cu buton de plată drop-in când nu are abonament valid
+
+**Tipare UX** — corectare de design peste ce era construit deja:
+- Fiecare ecran urmează un tipar consacrat (regulă permanentă, vezi
+  `CLAUDE.md`); componentele de bază rămân cele proprii (`src/components/ui`),
+  fără dependință de shadcn CLI (blocat de rețea în acest mediu)
+- Prezența are două stări, nu trei — „Întârziat" a dispărut din interfață
+  și din baza de date
+- „Bifat" / „nebifat" devine **„Completat" / „De completat"** peste tot
+- **„Mută ședința"** — buton cu selector de dată, nu doar anulare + ședință
+  nouă (`/dashboard/sessions/[id]/move`)
+- Calendarul are și o **vedere lunară**, pentru ansamblu după „Generează
+  ședințe" (`/dashboard?view=month`)
 
 Fără părinți — vin în Faza 3, după pauza obligatorie de 2 săptămâni de
 folosire reală (vezi `PLAN.md` și deciziile notate în `DECISIONS.md`).
@@ -81,10 +94,10 @@ folosire reală (vezi `PLAN.md` și deciziile notate în `DECISIONS.md`).
    Asta creează toate tabelele din `PLAN.md` (copii, ateliere, prezențe,
    abonamente etc.), tipurile enum, politicile de securitate (RLS) și
    declanșatorul care creează automat un rând în `users` la fiecare
-   înregistrare nouă. Migrările se aplică **în ordine, 0000 → 0003** — dacă
+   înregistrare nouă. Migrările se aplică **în ordine, 0000 → 0004** — dacă
    ai rulat deja proiectul înainte de o fază anterioară, rulează și
-   migrările lipsă (`0002_workshops_rename.sql`, `0003_subscriptions_workshop.sql`);
-   niciuna nu șterge date existente.
+   migrările lipsă (`0002_workshops_rename.sql`, `0003_subscriptions_workshop.sql`,
+   `0004_attendance_no_late.sql`); niciuna nu șterge date existente.
 
 4. **Pornește serverul de dezvoltare:**
    ```bash
