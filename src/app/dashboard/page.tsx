@@ -4,278 +4,214 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   addDays,
-  formatTime,
-  formatWeekdayDate,
+  addMonths,
+  firstOfMonth,
+  formatMonthYear,
   mondayOfWeek,
   todayInBucharest,
 } from "@/lib/date";
+import { enrichSessions, SESSION_COLUMNS, type SessionRow } from "@/lib/calendar-data";
+import { WeekView } from "./week-view";
+import { MonthView } from "./month-view";
 
-type SessionRow = {
-  id: string;
-  date: string;
-  start_time: string;
-  workshop_id: string | null;
-  title: string | null;
-  workshops: { name: string } | null;
-};
-
-type SessionCard = {
-  id: string;
-  date: string;
-  startTime: string;
-  label: string;
-  childCount: number;
-  checked: boolean;
-};
-
-async function enrichSessions(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  sessions: SessionRow[],
-): Promise<SessionCard[]> {
-  if (sessions.length === 0) return [];
-
-  const sessionIds = sessions.map((s) => s.id);
-  const workshopIds = [...new Set(sessions.map((s) => s.workshop_id).filter(Boolean))] as string[];
-  const noWorkshopIds = sessions.filter((s) => !s.workshop_id).map((s) => s.id);
-
-  const [attendanceRes, workshopChildrenRes, participantsRes] = await Promise.all([
-    supabase.from("attendance").select("session_id").in("session_id", sessionIds),
-    workshopIds.length
-      ? supabase
-          .from("child_workshops")
-          .select("workshop_id, children!inner(is_active)")
-          .in("workshop_id", workshopIds)
-          .is("left_at", null)
-          .eq("children.is_active", true)
-      : Promise.resolve({ data: [] }),
-    noWorkshopIds.length
-      ? supabase.from("session_participants").select("session_id").in("session_id", noWorkshopIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const checkedSessionIds = new Set((attendanceRes.data ?? []).map((a) => a.session_id));
-
-  const childCountByWorkshop = new Map<string, number>();
-  for (const row of workshopChildrenRes.data ?? []) {
-    childCountByWorkshop.set(
-      row.workshop_id,
-      (childCountByWorkshop.get(row.workshop_id) ?? 0) + 1,
-    );
-  }
-
-  const participantCountBySession = new Map<string, number>();
-  for (const row of participantsRes.data ?? []) {
-    participantCountBySession.set(
-      row.session_id,
-      (participantCountBySession.get(row.session_id) ?? 0) + 1,
-    );
-  }
-
-  return sessions.map((s) => ({
-    id: s.id,
-    date: s.date,
-    startTime: s.start_time,
-    label: s.workshops?.name ?? s.title ?? "Ședință specială",
-    childCount: s.workshop_id
-      ? (childCountByWorkshop.get(s.workshop_id) ?? 0)
-      : (participantCountBySession.get(s.id) ?? 0),
-    checked: checkedSessionIds.has(s.id),
-  }));
+function formatWeekRangeLabel(weekStart: string, weekEnd: string): string {
+  const [, ms, ds] = weekStart.split("-");
+  const [ye, me, de] = weekEnd.split("-");
+  const MONTHS = [
+    "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
+    "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
+  ];
+  const startDay = `${Number(ds)}`;
+  const endLabel = `${Number(de)} ${MONTHS[Number(me) - 1]} ${ye}`;
+  if (ms === me) return `${startDay} – ${endLabel}`;
+  return `${startDay} ${MONTHS[Number(ms) - 1]} – ${endLabel}`;
 }
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ offset?: string }>;
+  searchParams: Promise<{ view?: string; date?: string }>;
 }) {
-  const { offset: offsetParam } = await searchParams;
-  const offset = Number.parseInt(offsetParam ?? "0", 10) || 0;
+  const { view: viewParam, date: dateParam } = await searchParams;
+  const view = viewParam === "month" ? "month" : "week";
+  const today = todayInBucharest();
+  const anchor = dateParam ?? today;
 
   const supabase = await createClient();
-  const today = todayInBucharest();
 
-  const thisWeekStart = addDays(mondayOfWeek(today), offset * 7);
-  const nextWeekStart = addDays(thisWeekStart, 7);
-  const windowEnd = addDays(nextWeekStart, 6);
+  // "De completat" e o alertă globală, nu legată de săptămâna vizualizată --
+  // rămâne vizibilă până Rebecca completează prezența, oricât ar naviga.
+  const { data: pastCandidatesRaw } = await supabase
+    .from("sessions")
+    .select(SESSION_COLUMNS)
+    .lt("date", today)
+    .neq("status", "cancelled")
+    .gte("date", addDays(today, -60))
+    .order("date", { ascending: false })
+    .limit(20);
+  const pastCards = await enrichSessions(
+    supabase,
+    (pastCandidatesRaw ?? []) as unknown as SessionRow[],
+  );
+  const pastUnchecked = pastCards.filter((c) => !c.completed);
 
-  const sessionColumns =
-    "id, date, start_time, workshop_id, title, workshops(name), status";
+  if (view === "month") {
+    const monthStart = firstOfMonth(anchor);
+    const monthEnd = addDays(addMonths(monthStart, 1), -1);
 
-  const [pastUncheckedRes, windowRes] = await Promise.all([
-    offset === 0
-      ? supabase
-          .from("sessions")
-          .select(sessionColumns)
-          .lt("date", today)
-          .neq("status", "cancelled")
-          .gte("date", addDays(today, -60))
-          .order("date", { ascending: false })
-          .limit(20)
-      : Promise.resolve({ data: [] }),
-    supabase
+    const { data: monthRaw } = await supabase
       .from("sessions")
-      .select(sessionColumns)
-      .gte("date", thisWeekStart)
-      .lte("date", windowEnd)
+      .select(SESSION_COLUMNS)
+      .gte("date", monthStart)
+      .lte("date", monthEnd)
+      .neq("status", "cancelled")
+      .order("date");
+    const monthCards = await enrichSessions(supabase, (monthRaw ?? []) as unknown as SessionRow[]);
+
+    return (
+      <div className="mx-auto max-w-md space-y-6">
+        <CalendarHeader
+          view={view}
+          label={formatMonthYear(monthStart)}
+          prevHref={`/dashboard?view=month&date=${addMonths(monthStart, -1)}`}
+          nextHref={`/dashboard?view=month&date=${addMonths(monthStart, 1)}`}
+        />
+        <MonthView monthStart={monthStart} today={today} monthCards={monthCards} />
+        {pastUnchecked.length > 0 && (
+          <p className="text-sm text-amber-800">
+            {pastUnchecked.length === 1
+              ? "O ședință de completat"
+              : `${pastUnchecked.length} ședințe de completat`}
+            {" — "}
+            <Link href="/dashboard?view=week" className="underline">
+              vezi în săptămână
+            </Link>
+          </p>
+        )}
+        <BottomActions />
+      </div>
+    );
+  }
+
+  const weekStart = mondayOfWeek(anchor);
+  const weekEnd = addDays(weekStart, 6);
+  const isCurrentWeek = weekStart <= today && today <= weekEnd;
+
+  const { data: weekRaw } = await supabase
+    .from("sessions")
+    .select(SESSION_COLUMNS)
+    .gte("date", weekStart)
+    .lte("date", weekEnd)
+    .neq("status", "cancelled")
+    .order("date")
+    .order("start_time");
+  const weekCards = await enrichSessions(supabase, (weekRaw ?? []) as unknown as SessionRow[]);
+
+  let nextUpcoming = null;
+  if (isCurrentWeek && !weekCards.some((c) => c.date === today)) {
+    const { data: upcomingRaw } = await supabase
+      .from("sessions")
+      .select(SESSION_COLUMNS)
+      .gt("date", today)
       .neq("status", "cancelled")
       .order("date")
-      .order("start_time"),
-  ]);
-
-  const pastCandidates = (pastUncheckedRes.data ?? []) as unknown as SessionRow[];
-  const windowSessions = (windowRes.data ?? []) as unknown as SessionRow[];
-
-  const [pastCards, windowCards] = await Promise.all([
-    enrichSessions(supabase, pastCandidates),
-    enrichSessions(supabase, windowSessions),
-  ]);
-
-  const pastUnchecked = pastCards.filter((c) => !c.checked);
-
-  const todayCards = offset === 0 ? windowCards.filter((c) => c.date === today) : [];
-  const restOfThisWeek = windowCards.filter(
-    (c) => c.date >= thisWeekStart && c.date < nextWeekStart && c.date !== today,
-  );
-  const nextWeekCards = windowCards.filter((c) => c.date >= nextWeekStart);
-
-  const nextUpcoming = offset === 0 && todayCards.length === 0
-    ? [...restOfThisWeek, ...nextWeekCards].find((c) => c.date > today)
-    : null;
+      .order("start_time")
+      .limit(1);
+    const upcomingCards = await enrichSessions(
+      supabase,
+      (upcomingRaw ?? []) as unknown as SessionRow[],
+    );
+    nextUpcoming = upcomingCards[0] ?? null;
+  }
 
   return (
-    <div className="mx-auto max-w-md space-y-8">
-      {pastUnchecked.length > 0 && (
-        <section className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-4">
-          <h2 className="text-sm font-semibold text-red-800">
-            {pastUnchecked.length === 1
-              ? "O ședință nebifată"
-              : `${pastUnchecked.length} ședințe nebifate`}
-          </h2>
-          <ul className="space-y-1">
-            {pastUnchecked.map((card) => (
-              <SessionCardLink key={card.id} card={card} tone="red" />
-            ))}
-          </ul>
-        </section>
-      )}
+    <div className="mx-auto max-w-md space-y-6">
+      <CalendarHeader
+        view={view}
+        label={formatWeekRangeLabel(weekStart, weekEnd)}
+        prevHref={`/dashboard?view=week&date=${addDays(weekStart, -7)}`}
+        nextHref={`/dashboard?view=week&date=${addDays(weekStart, 7)}`}
+      />
+      <WeekView
+        weekStart={weekStart}
+        today={today}
+        isCurrentWeek={isCurrentWeek}
+        weekCards={weekCards}
+        pastUnchecked={isCurrentWeek ? pastUnchecked : []}
+        nextUpcoming={nextUpcoming}
+      />
+      <BottomActions />
+    </div>
+  );
+}
 
-      {offset === 0 && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-medium text-neutral-500">Astăzi</h2>
-          {todayCards.length > 0 ? (
-            <ul className="space-y-2">
-              {todayCards.map((card) => (
-                <SessionCardLink key={card.id} card={card} />
-              ))}
-            </ul>
-          ) : (
-            <div className="rounded-lg border border-dashed border-neutral-300 p-4 text-sm text-neutral-500">
-              <p>Niciun atelier astăzi.</p>
-              {nextUpcoming && (
-                <p className="mt-2">
-                  Următorul:{" "}
-                  <Link
-                    href={`/dashboard/sessions/${nextUpcoming.id}/attendance`}
-                    className="font-medium text-neutral-900 underline"
-                  >
-                    {formatWeekdayDate(nextUpcoming.date)}, {formatTime(nextUpcoming.startTime)} —{" "}
-                    {nextUpcoming.label}
-                  </Link>
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-neutral-500">
-          {offset === 0 ? "Săptămâna aceasta" : `Săptămâna din ${formatWeekdayDate(thisWeekStart)}`}
-        </h2>
-        {restOfThisWeek.length > 0 ? (
-          <ul className="space-y-2">
-            {restOfThisWeek.map((card) => (
-              <SessionCardLink key={card.id} card={card} />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-neutral-500">Nimic altceva săptămâna asta.</p>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-neutral-500">
-          {offset === 0 ? "Săptămâna viitoare" : `Săptămâna din ${formatWeekdayDate(nextWeekStart)}`}
-        </h2>
-        {nextWeekCards.length > 0 ? (
-          <ul className="space-y-2">
-            {nextWeekCards.map((card) => (
-              <SessionCardLink key={card.id} card={card} />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-neutral-500">Nimic programat.</p>
-        )}
-      </section>
-
-      <div className="flex items-center justify-between text-sm">
-        <Link href={`/dashboard?offset=${offset - 2}`} className="text-neutral-500 hover:underline">
-          ‹ Mai devreme
+function CalendarHeader({
+  view,
+  label,
+  prevHref,
+  nextHref,
+}: {
+  view: "week" | "month";
+  label: string;
+  prevHref: string;
+  nextHref: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <Link
+          href={prevHref}
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 hover:bg-neutral-100"
+          aria-label="Înapoi"
+        >
+          ←
         </Link>
-        <Link href={`/dashboard?offset=${offset + 2}`} className="text-neutral-500 hover:underline">
-          Mai târziu ›
+        <p className="text-sm font-medium">{label}</p>
+        <Link
+          href={nextHref}
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 hover:bg-neutral-100"
+          aria-label="Înainte"
+        >
+          →
         </Link>
       </div>
-
-      <div className="flex gap-2">
-        <Link href="/dashboard/workshops/new" className="flex-1">
-          <Button variant="outline" className="w-full">
-            + Atelier nou
-          </Button>
+      <div className="flex overflow-hidden rounded-md border border-neutral-300 text-sm">
+        <Link
+          href="/dashboard?view=week"
+          className={cn(
+            "px-3 py-1.5 font-medium",
+            view === "week" ? "bg-neutral-900 text-white" : "text-neutral-600 hover:bg-neutral-100",
+          )}
+        >
+          Săptămână
         </Link>
-        <Link href="/dashboard/sessions/generate" className="flex-1">
-          <Button variant="outline" className="w-full">
-            Generează ședințe
-          </Button>
+        <Link
+          href="/dashboard?view=month"
+          className={cn(
+            "px-3 py-1.5 font-medium",
+            view === "month" ? "bg-neutral-900 text-white" : "text-neutral-600 hover:bg-neutral-100",
+          )}
+        >
+          Lună
         </Link>
       </div>
     </div>
   );
 }
 
-function SessionCardLink({
-  card,
-  tone = "default",
-}: {
-  card: SessionCard;
-  tone?: "default" | "red";
-}) {
+function BottomActions() {
   return (
-    <li>
-      <Link
-        href={`/dashboard/sessions/${card.id}/attendance`}
-        className={cn(
-          "flex items-center justify-between gap-3 rounded-lg border p-4 hover:bg-neutral-50",
-          tone === "red"
-            ? "border-red-300 bg-white"
-            : "border-neutral-200 bg-white",
-        )}
-      >
-        <div className="min-w-0">
-          <p className={cn("font-medium", tone === "red" && "text-red-700")}>{card.label}</p>
-          <p className="text-sm text-neutral-500">
-            {formatWeekdayDate(card.date)} · {formatTime(card.startTime)} · {card.childCount} copii
-          </p>
-        </div>
-        <span
-          className={cn(
-            "shrink-0 text-sm font-medium",
-            card.checked ? "text-green-600" : tone === "red" ? "text-red-600" : "text-neutral-400",
-          )}
-        >
-          {card.checked ? "✓ bifat" : "— nebifat"}
-        </span>
+    <div className="flex gap-2">
+      <Link href="/dashboard/sessions/new" className="flex-1">
+        <Button variant="outline" className="w-full">
+          + Ședință nouă
+        </Button>
       </Link>
-    </li>
+      <Link href="/dashboard/sessions/generate" className="flex-1">
+        <Button variant="outline" className="w-full">
+          Generează ședințe
+        </Button>
+      </Link>
+    </div>
   );
 }

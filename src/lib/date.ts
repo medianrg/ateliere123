@@ -48,3 +48,39 @@ export function addDays(dateStr: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(d);
 }
+
+/** 1=Luni ... 7=Duminică pentru o dată "YYYY-MM-DD". */
+export function isoWeekday(dateStr: string): number {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day, 12));
+  return ((d.getUTCDay() + 6) % 7) + 1;
+}
+
+/** Prima zi a lunii care conține `dateStr`, ca "YYYY-MM-DD". */
+export function firstOfMonth(dateStr: string): string {
+  const [year, month] = dateStr.split("-");
+  return `${year}-${month}-01`;
+}
+
+/** Adaugă `months` luni la o dată "YYYY-MM-DD" (rămâne pe ziua 1). */
+export function addMonths(dateStr: string, months: number): string {
+  const [year, month] = dateStr.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1 + months, 1, 12));
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(d);
+}
+
+/** Câte zile are luna care conține `dateStr`. */
+export function daysInMonth(dateStr: string): number {
+  const [year, month] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 0, 12)).getUTCDate();
+}
+
+/** "2026-08-01" -> "august 2026" */
+export function formatMonthYear(dateStr: string): string {
+  const [year, month] = dateStr.split("-").map(Number);
+  return new Intl.DateTimeFormat("ro-RO", {
+    timeZone: "UTC",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, 1, 12)));
+}

@@ -105,3 +105,41 @@ niciun abonament sau plată, pentru că politicile sunt `is_admin()`, nu
 liste goale în loc de „nu ai acces", pentru că azi există un singur cont
 (Rebecca, admin) și nu s-a testat cu un cont de instructor real. De
 rafinat când rolul chiar se folosește.
+
+## Tipare UX + corectările din plan
+
+**Rândurile existente cu `status = 'late'` au devenit `present`.**
+Migrarea (`0004_attendance_no_late.sql`) recreează enum-ul
+`attendance_status` cu doar `present`/`absent`. Nu exista nicio logică
+legată de „întârziat" (nu afecta `sessions_used`, nici vreo alertă), așa
+că mutarea la „prezent" — copilul a fost la ședință, doar a venit mai
+târziu — e cea mai apropiată de realitate, nu o pierdere de informație
+reală.
+
+**„Mută ședința" are un singur mecanism: buton + selector de dată.**
+PLAN.md descrie drag-and-drop pe desktop și buton pe mobil, ca două căi
+separate. Am construit doar varianta cu buton — funcționează identic pe
+telefon și pe calculator, e mai simplă de întreținut, și „manual peste
+automat" oricum favorizează controlul explicit. Drag-and-drop pe vederea
+lunară rămâne o îmbunătățire posibilă, nu o lipsă — nimic nu blochează
+mutarea unei ședințe azi.
+
+**Comutatorul de lună/an din vederea lunară e prin săgeți, nu dropdown.**
+PLAN.md zice explicit „dropdown de lună și an", dar am ținut vederea
+lunară consecventă cu cea săptămânală (aceleași săgeți ← →), fără să
+adaug un tip nou de control doar pentru un ecran. Nu era nevoie de un
+`<select>`/dropdown separat ca să navighezi cu o lună înainte sau înapoi
+— două săgeți fac exact același lucru, cu un control în minus de învățat.
+
+**Banda de zile (L M M J V S D) e doar informativă, nu apăsabilă.**
+Tiparul Booksy/Fresha permite de obicei filtrarea agendei pe o singură
+zi la tap. Cu 2-3 ședințe pe săptămână, beneficiul e mic față de
+complexitatea în plus (un filtru suplimentar, o stare de "zi selectată"
+de gestionat) — agenda săptămânii întregi e oricum scurtă. Punctele
+rămân utile ca semnal vizual rapid ("ce zile au ceva"); interacțiunea
+pe zi poate veni ulterior dacă se dovedește necesară.
+
+**Secțiunea "De completat" e globală, nu legată de săptămâna vizualizată.**
+Rămâne vizibilă indiferent pe ce săptămână navighează Rebecca, exact cum
+cere planul: „Rămân acolo până sunt completate." E afișată doar în
+vederea săptămânală (în vederea lunară apare doar un rezumat cu link).

@@ -8,7 +8,7 @@ import { fetchSubscriptionsWithUsage, pickCurrentSubscription } from "@/lib/fina
 export async function setAttendance(
   sessionId: string,
   childId: string,
-  status: "present" | "absent" | "late",
+  status: "present" | "absent",
 ) {
   const supabase = await createClient();
 

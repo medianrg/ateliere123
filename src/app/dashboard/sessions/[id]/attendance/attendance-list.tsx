@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { setAttendance, toggleWaiveCredit } from "./actions";
 
-type AttendanceStatus = "present" | "absent" | "late" | null;
+type AttendanceStatus = "present" | "absent" | null;
 type PhotoStatus = "full" | "masked" | "none";
 type TrafficLight = "green" | "yellow" | "red";
 
@@ -81,7 +81,7 @@ function AttendanceRow({
 }) {
   const [isPending, startTransition] = useTransition();
 
-  function mark(status: "present" | "absent" | "late") {
+  function mark(status: "present" | "absent") {
     onChange({ status, waived: false });
     startTransition(async () => {
       await setAttendance(sessionId, child.id, status);
@@ -134,7 +134,7 @@ function AttendanceRow({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => mark("present")}
@@ -158,18 +158,6 @@ function AttendanceRow({
           )}
         >
           Absent
-        </button>
-        <button
-          type="button"
-          onClick={() => mark("late")}
-          className={cn(
-            "h-11 rounded-md text-sm font-medium transition-colors",
-            child.status === "late"
-              ? "bg-yellow-500 text-white"
-              : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
-          )}
-        >
-          Întârziat
         </button>
       </div>
 

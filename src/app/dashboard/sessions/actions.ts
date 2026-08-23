@@ -46,7 +46,7 @@ export async function cancelSession(sessionId: string) {
   if (error) throw new Error(error.message);
 
   // O ședință anulată nu consumă nimic din abonamente, indiferent ce era
-  // bifat înainte de anulare.
+  // completat înainte de anulare.
   const { error: attendanceError } = await supabase
     .from("attendance")
     .update({ sessions_used: 0 })
@@ -67,4 +67,21 @@ export async function reopenSession(sessionId: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard");
+}
+
+export async function moveSession(sessionId: string, formData: FormData) {
+  const supabase = await createClient();
+  const newDate = str(formData, "date");
+  if (!newDate) throw new Error("Alege o dată.");
+
+  // Mutarea nu afectează prezențele deja înregistrate -- doar data ședinței.
+  const { error } = await supabase
+    .from("sessions")
+    .update({ date: newDate })
+    .eq("id", sessionId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/dashboard");
+  redirect(`/dashboard/sessions/${sessionId}/attendance`);
 }
