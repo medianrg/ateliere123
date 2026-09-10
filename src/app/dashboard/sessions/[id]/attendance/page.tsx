@@ -55,9 +55,13 @@ export default async function AttendancePage({
   type ChildRef = { id: string; first_name: string; last_name: string; is_active?: boolean };
 
   const byId = new Map<string, ChildRef>();
+  const fromWorkshop = new Set<string>();
   for (const row of workshopChildrenRes.data ?? []) {
     const c = row.children as unknown as ChildRef | null;
-    if (c && c.is_active !== false) byId.set(c.id, c);
+    if (c && c.is_active !== false) {
+      byId.set(c.id, c);
+      fromWorkshop.add(c.id);
+    }
   }
   for (const p of participantsRes.data ?? []) {
     const c = p.children as unknown as ChildRef | null;
@@ -98,6 +102,7 @@ export default async function AttendancePage({
         status: (attendance?.status as RosterChild["status"]) ?? null,
         waived: attendance != null && Number(attendance.sessions_used) < sessionsUsedDefault,
         photoStatus: (consentByChild.get(c.id) as RosterChild["photoStatus"]) ?? "none",
+        isExtra: !fromWorkshop.has(c.id),
         subscriptionStatus: session.workshop_id
           ? currentSub
             ? { color: trafficLight(currentSub, session.date), remaining: currentSub.remaining }

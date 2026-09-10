@@ -80,7 +80,15 @@ export default async function WorkshopDetailPage({
 
       {activeChildren.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-medium text-neutral-500">Copii înscriși</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-medium text-neutral-500">Copii înscriși</h2>
+            <Link
+              href={`/dashboard/children/poze?workshop=${id}`}
+              className="text-sm text-neutral-600 underline"
+            >
+              Cine apare în poze
+            </Link>
+          </div>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
             {activeChildren.map((e) => {
               const child = e.children as unknown as {

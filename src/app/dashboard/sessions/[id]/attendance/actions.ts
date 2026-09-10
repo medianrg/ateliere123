@@ -105,3 +105,42 @@ export async function addParticipant(sessionId: string, childId: string) {
 
   revalidatePath(`/dashboard/sessions/${sessionId}/attendance`);
 }
+
+/** Șterge bifa unui copil, readucând rândul la starea „necompletat".
+ *
+ * E singura ștergere reală din aplicație și e intenționată: o prezență pusă
+ * din greșeală nu se poate corecta comutând între prezent și absent -- ambele
+ * sunt afirmații despre copil. PLAN.md o prevede explicit în `audit_log`. */
+export async function clearAttendance(sessionId: string, childId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("attendance")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("child_id", childId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/sessions/${sessionId}/attendance`);
+  revalidatePath("/dashboard");
+}
+
+/** Scoate din ședință un copil adăugat manual (recuperare, frate, copil de
+ * probă). Nu atinge copiii înscriși la atelier -- aceia pleacă din fișa lor,
+ * prin „Părăsește atelierul". */
+export async function removeParticipant(sessionId: string, childId: string) {
+  const supabase = await createClient();
+
+  await clearAttendance(sessionId, childId);
+
+  const { error } = await supabase
+    .from("session_participants")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("child_id", childId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/sessions/${sessionId}/attendance`);
+}
