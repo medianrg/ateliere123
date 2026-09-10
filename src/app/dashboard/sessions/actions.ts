@@ -83,5 +83,6 @@ export async function moveSession(sessionId: string, formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard");
-  redirect(`/dashboard/sessions/${sessionId}/attendance`);
+  // Înapoi în calendar, pe săptămâna unde a aterizat ședința.
+  redirect(`/dashboard?view=week&date=${newDate}`);
 }

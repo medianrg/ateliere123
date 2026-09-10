@@ -14,12 +14,32 @@ export function SessionCardLink({
   actionLabel?: string;
 }) {
   return (
-    <li>
+    <li
+      className={cn(
+        "relative overflow-hidden rounded-lg border",
+        tone === "warning" ? "border-amber-300 bg-amber-50" : "border-neutral-200 bg-white",
+      )}
+    >
+      {card.color && (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-1.5"
+          style={{ backgroundColor: card.color }}
+        />
+      )}
+
+      {/* Cardul întreg e apăsabil: linkul acoperă toată suprafața, iar
+          acțiunile de deasupra își recapătă clickul. */}
       <Link
         href={`/dashboard/sessions/${card.id}/attendance`}
+        className="absolute inset-0"
+        aria-label={`${card.label} — ${formatWeekdayDate(card.date)}, ${formatTime(card.startTime)}`}
+      />
+
+      <div
         className={cn(
-          "flex items-center justify-between gap-3 rounded-lg border p-4 hover:bg-neutral-50",
-          tone === "warning" ? "border-amber-300 bg-amber-50" : "border-neutral-200 bg-white",
+          "pointer-events-none relative flex items-center justify-between gap-3 p-4",
+          card.color && "pl-5",
         )}
       >
         <div className="min-w-0">
@@ -31,21 +51,30 @@ export function SessionCardLink({
             {formatWeekdayDate(card.date)} · {formatTime(card.startTime)} · {card.childCount} copii
           </p>
         </div>
-        {actionLabel ? (
-          <span className="shrink-0 rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white">
-            {actionLabel}
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "shrink-0 text-sm font-medium",
-              card.completed ? "text-green-600" : "text-neutral-400",
-            )}
+
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+          {actionLabel ? (
+            <span className="rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white">
+              {actionLabel}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "text-sm font-medium",
+                card.completed ? "text-green-600" : "text-neutral-400",
+              )}
+            >
+              {card.completed ? "Completat" : "De completat"}
+            </span>
+          )}
+          <Link
+            href={`/dashboard/sessions/${card.id}/move`}
+            className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
           >
-            {card.completed ? "Completat" : "De completat"}
-          </span>
-        )}
-      </Link>
+            Mută
+          </Link>
+        </div>
+      </div>
     </li>
   );
 }

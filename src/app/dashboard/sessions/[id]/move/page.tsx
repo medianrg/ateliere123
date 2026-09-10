@@ -36,10 +36,10 @@ export default async function MoveSessionPage({
   return (
     <div className="mx-auto max-w-md space-y-6">
       <Link
-        href={`/dashboard/sessions/${sessionId}/attendance`}
+        href={`/dashboard?view=week&date=${session.date}`}
         className="text-sm text-neutral-500 hover:underline"
       >
-        ← Înapoi la ședință
+        ← Calendar
       </Link>
 
       <div>

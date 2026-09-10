@@ -6,7 +6,7 @@ export type SessionRow = {
   start_time: string;
   workshop_id: string | null;
   title: string | null;
-  workshops: { name: string } | null;
+  workshops: { name: string; color: string | null } | null;
 };
 
 export type SessionCard = {
@@ -14,12 +14,14 @@ export type SessionCard = {
   date: string;
   startTime: string;
   label: string;
+  /** Culoarea atelierului, ca să distingi atelierele dintr-o privire. */
+  color: string | null;
   childCount: number;
   completed: boolean;
 };
 
 export const SESSION_COLUMNS =
-  "id, date, start_time, workshop_id, title, workshops(name), status";
+  "id, date, start_time, workshop_id, title, workshops(name, color), status";
 
 /** Câți copii are fiecare ședință și dacă prezența e completată -- niciodată
  * dintr-un contor, mereu derivat din child_workshops/session_participants
@@ -72,6 +74,7 @@ export async function enrichSessions(
     date: s.date,
     startTime: s.start_time,
     label: s.workshops?.name ?? s.title ?? "Ședință specială",
+    color: s.workshops?.color ?? null,
     childCount: s.workshop_id
       ? (childCountByWorkshop.get(s.workshop_id) ?? 0)
       : (participantCountBySession.get(s.id) ?? 0),

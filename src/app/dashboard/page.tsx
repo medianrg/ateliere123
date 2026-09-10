@@ -46,9 +46,9 @@ export default async function DashboardPage({
     .select(SESSION_COLUMNS)
     .lt("date", today)
     .neq("status", "cancelled")
-    .gte("date", addDays(today, -60))
+    .gte("date", addDays(today, -120))
     .order("date", { ascending: false })
-    .limit(20);
+    .limit(50);
   const pastCards = await enrichSessions(
     supabase,
     (pastCandidatesRaw ?? []) as unknown as SessionRow[],
@@ -88,7 +88,7 @@ export default async function DashboardPage({
             </Link>
           </p>
         )}
-        <BottomActions />
+        <BottomActions weekStart={mondayOfWeek(anchor)} />
       </div>
     );
   }
@@ -137,10 +137,10 @@ export default async function DashboardPage({
         today={today}
         isCurrentWeek={isCurrentWeek}
         weekCards={weekCards}
-        pastUnchecked={isCurrentWeek ? pastUnchecked : []}
+        pastUnchecked={pastUnchecked}
         nextUpcoming={nextUpcoming}
       />
-      <BottomActions />
+      <BottomActions weekStart={weekStart} />
     </div>
   );
 }
@@ -199,19 +199,10 @@ function CalendarHeader({
   );
 }
 
-function BottomActions() {
+function BottomActions({ weekStart }: { weekStart: string }) {
   return (
-    <div className="flex gap-2">
-      <Link href="/dashboard/sessions/new" className="flex-1">
-        <Button variant="outline" className="w-full">
-          + Ședință nouă
-        </Button>
-      </Link>
-      <Link href="/dashboard/sessions/generate" className="flex-1">
-        <Button variant="outline" className="w-full">
-          Generează ședințe
-        </Button>
-      </Link>
-    </div>
+    <Link href={`/dashboard/sessions/add?week=${weekStart}`} className="block">
+      <Button className="w-full">+ Adaugă ședințe</Button>
+    </Link>
   );
 }

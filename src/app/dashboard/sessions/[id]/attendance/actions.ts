@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { todayInBucharest } from "@/lib/date";
 import { fetchSubscriptionsWithUsage, pickCurrentSubscription } from "@/lib/finance";
 
 export async function setAttendance(
@@ -13,7 +12,11 @@ export async function setAttendance(
   const supabase = await createClient();
 
   const [{ data: session }, { data: userRes }] = await Promise.all([
-    supabase.from("sessions").select("sessions_used_default, workshop_id").eq("id", sessionId).single(),
+    supabase
+      .from("sessions")
+      .select("date, sessions_used_default, workshop_id")
+      .eq("id", sessionId)
+      .single(),
     supabase.auth.getUser(),
   ]);
 
@@ -23,10 +26,12 @@ export async function setAttendance(
 
   if (session?.workshop_id) {
     const subsByChild = await fetchSubscriptionsWithUsage(supabase, [childId]);
+    // Abonamentul se alege după data ședinței, nu după ziua de azi: altfel o
+    // prezență completată retroactiv s-ar scădea din abonamentul greșit.
     const current = pickCurrentSubscription(
       subsByChild.get(childId) ?? [],
       session.workshop_id,
-      todayInBucharest(),
+      session.date,
     );
     if (current) {
       subscriptionId = current.id;
