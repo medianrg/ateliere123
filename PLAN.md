@@ -395,6 +395,84 @@ altceva prima dată", există răspunsul.
 ### `feedback_replies`
 | id, feedback_id, author_id (părinte), body, created_at |
 
+Răspunsurile părinților sunt text și **rămân permanent**. Nu expiră niciodată.
+
+### Feedback audio
+
+Rebecca preferă să înregistreze, nu să scrie. Părintele răspunde în scris.
+Înregistrarea dispare după câteva zile; răspunsul scris rămâne.
+
+**Câmpuri suplimentare pe `feedback`:**
+
+| câmp | tip | note |
+|---|---|---|
+| audio_path | text nullable | calea în storage |
+| audio_duration_sec | int nullable | |
+| audio_expires_at | timestamptz nullable | `published_at + N zile`, N configurabil, implicit 7 |
+| audio_deleted_at | timestamptz nullable | când a fost șters efectiv fișierul |
+| listened_at | timestamptz nullable | prima redare de către părinte |
+| title | text nullable | un rând scris de Rebecca, ex. „despre concentrare" |
+
+**Cum funcționează:**
+
+1. Rebecca apasă „Înregistrează" direct în aplicație, pe telefon. Fără aplicație
+   separată, fără fișiere de încărcat manual.
+2. Poate reasculta și reînregistra oricând înainte de publicare. Ciorna se
+   păstrează.
+3. Adaugă opțional un rând de context, ca părintele să știe despre ce e vorba
+   înainte să asculte.
+4. Publică — același flux ca la feedbackul scris: fereastră de anulare de 10
+   minute, apoi pleacă emailul.
+5. Părintele ascultă în aplicație și răspunde în scris.
+6. După N zile, un job șterge fișierul audio. Înregistrarea din listă rămâne,
+   cu mențiunea „Înregistrarea a expirat", împreună cu titlul și răspunsul
+   părintelui.
+
+**Reguli:**
+
+- **Durată maximă 5 minute.** Ține fișierele mici și o obligă pe Rebecca să fie
+  concisă. Un feedback audio de 12 minute nu îl ascultă nimeni.
+- **Fără buton de descărcare.** Redarea se face prin linkuri semnate valabile
+  câteva minute, regenerate la fiecare ascultare. Fișierul nu e niciodată expus
+  la o adresă publică permanentă.
+- **Asta e frecare, nu protecție.** Oricine poate înregistra ecranul sau pune un
+  al doilea telefon lângă difuzor. Descurajează redistribuirea accidentală, nu o
+  împiedică. Rebecca știe și acceptă riscul.
+- **Emailul nu conține audio**, doar un link către aplicație și data până la care
+  e disponibil.
+- **Rebecca vede dacă părintele a ascultat** și poate prelungi disponibilitatea
+  cu încă N zile, printr-un buton.
+- Ștergerea folosește aceeași coadă de joburi ca emailul întârziat cu 10 minute.
+
+**Notă tehnică — cea mai probabilă cauză de eșec:**
+
+Rebecca înregistrează de pe **Android**. Chrome pe Android produce implicit
+`audio/webm` cu codec Opus. **Safari pe iOS nu poate reda webm.** Părinții cu
+iPhone nu ar auzi nimic, iar tu nu ai observa niciodată testând pe Android.
+
+Soluția, în ordinea preferinței:
+1. La înregistrare, verifică `MediaRecorder.isTypeSupported('audio/mp4')` și
+   folosește mp4/AAC dacă e disponibil — se redă peste tot.
+2. Dacă nu, încarcă webm și **transcodează pe server** în m4a/AAC înainte de
+   a-l face disponibil părintelui.
+3. Stochează formatul final în `audio_mime_type` și servește-l explicit.
+
+**Criteriu de acceptare obligatoriu:** o înregistrare făcută pe telefonul
+Android al Rebeccăi se ascultă corect pe un iPhone. Testat pe dispozitive
+reale, nu în simulator.
+
+### Cum se explică părinților
+
+Comportamentul e cunoscut din Seesaw și ClassDojo, dar două lucruri trebuie
+spuse explicit în interfață, nu presupuse:
+
+- La prima deschidere: „Rebecca trimite mesaje vocale. Tu răspunzi în scris."
+- Lângă fiecare înregistrare, permanent vizibil: „Disponibil până pe 14
+  septembrie."
+
+Regula nu se ascunde. Un părinte care descoperă singur că mesajul a dispărut
+crede că e o eroare.
+
 ### `notifications_log`
 Fiecare mesaj trimis către un părinte, fără excepție.
 
@@ -773,7 +851,7 @@ Row Level Security, layout de bază, deploy pe Vercel din GitHub.
 **Criteriu de acceptare:** Rebecca se loghează și vede un dashboard gol.
 
 ### Faza 1 — Nucleul administrativ ⭐ prioritate maximă
-Ateliere (cu editare și arhivare), tipuri de atelier, copii, sesiuni normale și
+Ateliere (cu editare și arhivare), tipuri de ședință, copii, ședințe normale și
 speciale, **ecranul de prezență**, acorduri GDPR.
 Fără abonamente, fără părinți, fără plăți.
 **Criteriu de acceptare:** Rebecca bifează prezența la un atelier real, de pe
@@ -785,12 +863,42 @@ vizuale pentru expirare.
 **Criteriu de acceptare:** soldul afișat coincide cu realitatea după 2 săptămâni
 de utilizare.
 
-### 🛑 Pauză obligatorie de 2 săptămâni
-Rebecca folosește aplicația **în paralel cu metoda actuală**. Se compară.
-Se repară ce se strică. Abia apoi mergi mai departe.
+### Faza 2.5 — Consolidare: managementul trebuie să fie COMPLET și SIMPLU
+
+Nu se trece mai departe până Rebecca nu poate administra clubul integral din
+aplicație, fără caiet și fără Excel. Asta e prioritatea, nu funcțiile noi.
+
+**Lista de „gata". Fiecare punct se testează pe telefonul ei, cu date reale:**
+
+- [ ] Creează, editează și arhivează un atelier, cu ritm și cele două prețuri
+- [ ] Adaugă un copil nou și îl înscrie la un atelier, în sub un minut
+- [ ] Generează ședințele pe o lună întreagă și șterge din listă zilele de vacanță
+- [ ] Mută o ședință în altă zi
+- [ ] Completează prezența la o ședință reală, de pe telefon, în sub 60 de secunde
+- [ ] Corectează o prezență de săptămâna trecută
+- [ ] Vede imediat ce ședințe a uitat să completeze
+- [ ] Creează un abonament și vede câte ședințe au mai rămas
+- [ ] Înregistrează o plată și vede soldul copilului
+- [ ] Deschide lista de restanțe și e corectă
+- [ ] Marchează un copil ca Scutit și acesta dispare din restanțe
+- [ ] Setează statusul foto al fiecărui copil și îl vede dintr-o privire
+- [ ] Introduce toți copiii existenți, prin import sau manual
+
+**Regula acestei faze: se taie, nu se adaugă.** Orice ecran, câmp sau buton
+care nu servește unui punct din lista de mai sus se scoate. Statisticile,
+rapoartele și exporturile avansate așteaptă.
+
+### 🛑 Folosire reală, 2 săptămâni
+
+Rebecca folosește aplicația **în paralel cu metoda actuală**. Se compară
+rezultatele. Se repară ce se strică. Abia apoi se merge mai departe.
 
 Motivul: din momentul în care părinții au acces, orice bug devine public și
-costă credibilitate, nu doar timp.
+costă credibilitate, nu doar timp. Până atunci, orice greșeală e o discuție
+între doi oameni.
+
+**Criteriu de trecere:** două săptămâni în care Rebecca nu a mai deschis
+caietul nici măcar o dată.
 
 ### Faza 3 — Portalul părinților
 Conturi părinți create de Rebecca, legare many-to-many, ecran read-only cu
@@ -800,6 +908,10 @@ prezențe / abonament / plăți.
 Ciorne cu salvare automată, buton distinct „Trimite părintelui", fereastră de
 anulare de 10 minute, retragere, versionare, răspunsuri de la părinți.
 Email fără conținut, doar cu link către aplicație.
+
+**Include feedbackul audio** — vezi secțiunea dedicată din schema bazei de date.
+Rebecca înregistrează în aplicație, părintele răspunde în scris, înregistrarea
+se șterge automat după 7 zile, răspunsul rămâne.
 
 **Necesită o coadă de joburi** (cron pe Vercel sau Supabase Edge Function
 programată) pentru emailul întârziat cu 10 minute. E singura piesă de
@@ -830,7 +942,7 @@ notificări WhatsApp, aplicație mobilă nativă, facturare.
 
 1. **Niciodată DELETE.** Totul e `is_active = false`. Copiii pleacă și se întorc.
 2. **Migrări versionate în git.** Fără modificări manuale în Supabase Studio.
-3. **Seed data de la început** — 3 ateliere, 10 copii, 5 sesiuni, 2 abonamente.
+3. **Seed data de la început** — 3 ateliere, 10 copii, 5 ședințe, 2 abonamente.
    Fără date de test nu poți evalua dacă ecranul de prezență e rapid.
 4. **Import inițial.** Rebecca are datele acum într-un Excel sau caiet. Fă un
    import CSV rudimentar în Faza 1, altfel primele două zile sunt tastare
