@@ -14,7 +14,6 @@ type Workshop = {
   start_time: string | null;
   price_per_session: string;
   is_active: boolean;
-  sort_order: number;
 };
 
 const WEEKDAY_LABEL: Record<number, string> = {
@@ -39,7 +38,7 @@ export default async function WorkshopsPage() {
   const { data: workshops } = await supabase
     .from("workshops")
     .select("*")
-    .order("sort_order", { ascending: true })
+    .order("name")
     .returns<Workshop[]>();
 
   const active = (workshops ?? []).filter((w) => w.is_active);

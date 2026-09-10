@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { setAttendance, toggleWaiveCredit } from "./actions";
+import {
+  setAttendance,
+  toggleWaiveCredit,
+  clearAttendance,
+  removeParticipant,
+} from "./actions";
 
 type AttendanceStatus = "present" | "absent" | null;
 type PhotoStatus = "full" | "masked" | "none";
@@ -16,6 +21,9 @@ export type RosterChild = {
   status: AttendanceStatus;
   waived: boolean;
   photoStatus: PhotoStatus;
+  /** Adăugat manual la ședința asta (recuperare, frate, copil de probă),
+   * deci poate fi și scos din ea. */
+  isExtra: boolean;
   /** null = ședință specială, fără atelier -> fără concept de abonament. */
   subscriptionStatus: { color: TrafficLight; remaining: number } | null;
 };
@@ -62,6 +70,9 @@ export function AttendanceList({
               prev.map((c) => (c.id === child.id ? { ...c, ...patch } : c)),
             )
           }
+          onRemove={() =>
+            setRoster((prev) => prev.filter((c) => c.id !== child.id))
+          }
         />
       ))}
     </ul>
@@ -73,11 +84,13 @@ function AttendanceRow({
   child,
   dropInPrice,
   onChange,
+  onRemove,
 }: {
   sessionId: string;
   child: RosterChild;
   dropInPrice?: string;
   onChange: (patch: Partial<RosterChild>) => void;
+  onRemove: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -92,6 +105,20 @@ function AttendanceRow({
     onChange({ waived: next });
     startTransition(async () => {
       await toggleWaiveCredit(sessionId, child.id, next);
+    });
+  }
+
+  function clear() {
+    onChange({ status: null, waived: false });
+    startTransition(async () => {
+      await clearAttendance(sessionId, child.id);
+    });
+  }
+
+  function remove() {
+    onRemove();
+    startTransition(async () => {
+      await removeParticipant(sessionId, child.id);
     });
   }
 
@@ -121,6 +148,9 @@ function AttendanceRow({
           <span className="truncate font-medium">
             {child.first_name} {child.last_name}
           </span>
+          {child.isExtra && (
+            <span className="shrink-0 text-xs text-neutral-400">în plus</span>
+          )}
         </div>
         {needsDropIn && child.status === "present" && dropInPrice && (
           <Link
@@ -172,6 +202,19 @@ function AttendanceRow({
           Nu scădea ședința (absență iertată)
         </label>
       )}
+
+      <div className="flex gap-4 text-sm">
+        {child.status !== null && (
+          <button type="button" onClick={clear} className="text-neutral-500 underline">
+            Șterge bifa
+          </button>
+        )}
+        {child.isExtra && (
+          <button type="button" onClick={remove} className="text-neutral-500 underline">
+            Scoate din listă
+          </button>
+        )}
+      </div>
     </li>
   );
 }

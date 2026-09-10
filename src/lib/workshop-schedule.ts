@@ -1,58 +1,68 @@
-/** Zilele (1=Luni...7=Duminică) în care cade `weekday` în luna dată. */
-function occurrencesOfWeekdayInMonth(
-  year: number,
-  month: number, // 1-12
-  weekday: number, // 1-7 (ISO: Luni=1, Duminică=7)
-): string[] {
-  const dates: string[] = [];
-  const daysInMonth = new Date(year, month, 0).getDate();
+import { addDays } from "@/lib/date";
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const d = new Date(Date.UTC(year, month - 1, day));
-    const isoWeekday = ((d.getUTCDay() + 6) % 7) + 1; // JS getDay: 0=Duminică -> ISO 7
-    if (isoWeekday === weekday) {
-      dates.push(
-        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-      );
-    }
-  }
-
-  return dates;
-}
+export type WeekSlot = {
+  /** Data propusă în săptămâna vizualizată, sau "" dacă atelierul n-are zi fixă. */
+  date: string;
+  /** Bifat din start — o sugestie, nu o regulă. */
+  suggested: boolean;
+  /** Explicație scurtă, afișată sub rând când ritmul nu e săptămânal. */
+  note: string | null;
+};
 
 /**
- * Propune datele ședințelor pentru un atelier, într-o lună dată, pe baza
- * ritmului lui. E doar un punct de plecare — Rebecca poate muta sau șterge
- * orice dată din listă înainte să confirme.
+ * Ce propune aplicația pentru un atelier, într-o săptămână anume.
+ *
+ * Rebecca alege în fiecare săptămână ce ședințe adaugă — asta e doar poziția
+ * de pornire, calculată din ritmul atelierului. Nimic nu se creează fără ca ea
+ * să bifeze și să confirme.
  */
-export function proposeSessionDates({
-  year,
-  month,
+export function proposeWeekSlot({
+  weekStart,
   frequency,
   weekday,
   monthWeek,
 }: {
-  year: number;
-  month: number;
+  weekStart: string;
   frequency: "weekly" | "biweekly" | "monthly" | "none";
   weekday: number | null;
   monthWeek: number | null;
-}): string[] {
-  if (!weekday || frequency === "none") return [];
+}): WeekSlot {
+  if (!weekday || frequency === "none") {
+    return { date: "", suggested: false, note: "fără zi fixă — alege data" };
+  }
 
-  const occurrences = occurrencesOfWeekdayInMonth(year, month, weekday);
+  const date = addDays(weekStart, weekday - 1);
 
-  if (frequency === "weekly") return occurrences;
+  if (frequency === "weekly") {
+    return { date, suggested: true, note: null };
+  }
 
   if (frequency === "biweekly") {
-    return occurrences.filter((_, i) => i % 2 === 0);
+    return {
+      date,
+      suggested: false,
+      note: "la două săptămâni — bifează când e rândul lui",
+    };
   }
 
-  if (frequency === "monthly") {
-    if (!monthWeek) return [];
-    const picked = occurrences[monthWeek - 1];
-    return picked ? [picked] : [];
-  }
+  // Lunar: se propune doar în săptămâna în care cade a N-a apariție a zilei.
+  const dayOfMonth = Number(date.slice(8, 10));
+  const occurrence = Math.ceil(dayOfMonth / 7);
+  const matches = monthWeek != null && occurrence === monthWeek;
+  return {
+    date,
+    suggested: matches,
+    note: matches ? null : "lunar — nu e săptămâna obișnuită",
+  };
+}
 
-  return [];
+/** "17:00" + 120 -> "19:00". Trece peste miezul nopții fără să crape. */
+export function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + minutes;
+  const hh = Math.floor((total / 60) % 24)
+    .toString()
+    .padStart(2, "0");
+  const mm = (total % 60).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
 }

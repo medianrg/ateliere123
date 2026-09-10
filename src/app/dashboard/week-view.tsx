@@ -29,6 +29,7 @@ export function WeekView({
   }
 
   const todayCards = isCurrentWeek ? (cardsByDate.get(today) ?? []) : [];
+  const alreadyFlagged = new Set(pastUnchecked.map((c) => c.id));
 
   return (
     <div className="space-y-6">
@@ -101,6 +102,7 @@ export function WeekView({
         {weekCards.length > 0 ? (
           <ul className="space-y-2">
             {weekCards
+              .filter((c) => !alreadyFlagged.has(c.id))
               .filter((c) => !isCurrentWeek || c.date !== today)
               .map((card) => (
                 <SessionCardLink key={card.id} card={card} />

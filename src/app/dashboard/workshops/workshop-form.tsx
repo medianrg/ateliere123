@@ -18,7 +18,6 @@ type WorkshopFormValues = {
   duration_min?: number | null;
   month_week?: number | null;
   sessions_per_month?: number | null;
-  sort_order?: number;
 };
 
 const WEEKDAYS = [
@@ -178,16 +177,6 @@ export function WorkshopForm({
           type="color"
           className="h-11 w-20 px-1"
           defaultValue={initial?.color ?? "#a3a3a3"}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="sort_order">Ordine de afișare</Label>
-        <Input
-          id="sort_order"
-          name="sort_order"
-          type="number"
-          defaultValue={initial?.sort_order ?? 0}
         />
       </div>
 

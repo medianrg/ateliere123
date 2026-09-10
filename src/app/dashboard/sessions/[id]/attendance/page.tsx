@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatTime, todayInBucharest } from "@/lib/date";
+import { formatDate, formatTime } from "@/lib/date";
 import { fetchSubscriptionsWithUsage, pickCurrentSubscription, trafficLight } from "@/lib/finance";
 import { AttendanceList, type RosterChild } from "./attendance-list";
 
@@ -55,9 +55,13 @@ export default async function AttendancePage({
   type ChildRef = { id: string; first_name: string; last_name: string; is_active?: boolean };
 
   const byId = new Map<string, ChildRef>();
+  const fromWorkshop = new Set<string>();
   for (const row of workshopChildrenRes.data ?? []) {
     const c = row.children as unknown as ChildRef | null;
-    if (c && c.is_active !== false) byId.set(c.id, c);
+    if (c && c.is_active !== false) {
+      byId.set(c.id, c);
+      fromWorkshop.add(c.id);
+    }
   }
   for (const p of participantsRes.data ?? []) {
     const c = p.children as unknown as ChildRef | null;
@@ -74,7 +78,9 @@ export default async function AttendancePage({
   );
   const consentByChild = new Map((consents ?? []).map((c) => [c.child_id, c.photo_status]));
 
-  const today = todayInBucharest();
+  // Totul se raportează la data ședinței, nu la ziua de azi -- indicatorul
+  // arată exact abonamentul care se va scădea, inclusiv la completări
+  // retroactive.
   const subsByChild = session.workshop_id
     ? await fetchSubscriptionsWithUsage(supabase, childIds)
     : new Map();
@@ -86,7 +92,7 @@ export default async function AttendancePage({
       const sessionsUsedDefault = Number(session.sessions_used_default);
 
       const currentSub = session.workshop_id
-        ? pickCurrentSubscription(subsByChild.get(c.id) ?? [], session.workshop_id, today)
+        ? pickCurrentSubscription(subsByChild.get(c.id) ?? [], session.workshop_id, session.date)
         : null;
 
       return {
@@ -96,9 +102,10 @@ export default async function AttendancePage({
         status: (attendance?.status as RosterChild["status"]) ?? null,
         waived: attendance != null && Number(attendance.sessions_used) < sessionsUsedDefault,
         photoStatus: (consentByChild.get(c.id) as RosterChild["photoStatus"]) ?? "none",
+        isExtra: !fromWorkshop.has(c.id),
         subscriptionStatus: session.workshop_id
           ? currentSub
-            ? { color: trafficLight(currentSub, today), remaining: currentSub.remaining }
+            ? { color: trafficLight(currentSub, session.date), remaining: currentSub.remaining }
             : { color: "red" as const, remaining: 0 }
           : null,
       };

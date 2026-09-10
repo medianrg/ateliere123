@@ -12,7 +12,7 @@ Utilizatori: **Rebecca** (admin/instructor) și **părinții** copiilor înscri�
 - [`CLAUDE.md`](./CLAUDE.md) — instrucțiuni de lucru pentru implementare
   (stack tehnic, reguli de bază de date, mod de lucru pe faze).
 
-## Stadiu actual — Faza 2: Abonamente și plăți
+## Stadiu actual — Faza 2.5: Consolidare
 
 **Faza 0** (fundație): Next.js + Tailwind, autentificare Supabase, schema
 completă a bazei de date cu Row Level Security pe toate tabelele.
@@ -65,8 +65,33 @@ completă a bazei de date cu Row Level Security pe toate tabelele.
 - „Bifat" / „nebifat" devine **„Completat" / „De completat"** peste tot
 - **„Mută ședința"** — buton cu selector de dată, nu doar anulare + ședință
   nouă (`/dashboard/sessions/[id]/move`)
-- Calendarul are și o **vedere lunară**, pentru ansamblu după „Generează
-  ședințe" (`/dashboard?view=month`)
+- Calendarul are și o **vedere lunară**, pentru verificarea de ansamblu a
+  lunii (`/dashboard?view=month`)
+
+**Faza 2.5** (consolidare) — scopul e ca tot clubul să se administreze din
+aplicație, fără caiet și fără Excel. Regula fazei e „se taie, nu se adaugă":
+
+- **Ședințele se adaugă săptămână cu săptămână**, nu pe luni întregi.
+  „+ Adaugă ședințe" pornește din săptămâna din calendar, propune bifate
+  atelierele săptămânale, și lasă ziua și ora editabile pe loc
+  (`/dashboard/sessions/add`)
+- **„Mută" e pe fiecare card din calendar**, nu ascuns în ecranul de prezență
+- **Culoarea atelierului** se vede ca dungă pe cardurile de ședință
+- **„De completat" rămâne vizibil pe orice săptămână**, nu doar pe cea curentă
+- **Prezențele se corectează**: „Șterge bifa" readuce un copil la
+  necompletat, iar un copil adăugat din greșeală se poate scoate din ședință
+- **Abonamentul se scade după data ședinței**, nu după ziua de azi — o
+  prezență completată retroactiv nu mai consumă din abonamentul greșit
+- **Import de copii** — lipești lista de nume, alegi opțional un atelier
+  pentru tot lotul, vezi ce se creează, confirmi (`/dashboard/children/import`)
+- **Lista de copii e căutabilă** și arată statutul foto pe fiecare rând
+- **„Cine apare în poze"** — copiii grupați pe cele trei culori, filtrabil pe
+  atelier, de verificat înainte de a posta (`/dashboard/children/poze`)
+- **Abonamentele sunt accesibile și editabile** — „+ Abonament nou" direct din
+  meniul Abonamente, plus editarea unuia existent
+- Tăiate: „Ordine de afișare" la ateliere, filtrele din lista de copii
+  (înlocuite de căutare), și codul de anulare a ședinței care nu era apelat de
+  nicăieri
 
 Fără părinți — vin în Faza 3, după pauza obligatorie de 2 săptămâni de
 folosire reală (vezi `PLAN.md` și deciziile notate în `DECISIONS.md`).
@@ -98,6 +123,7 @@ folosire reală (vezi `PLAN.md` și deciziile notate în `DECISIONS.md`).
    ai rulat deja proiectul înainte de o fază anterioară, rulează și
    migrările lipsă (`0002_workshops_rename.sql`, `0003_subscriptions_workshop.sql`,
    `0004_attendance_no_late.sql`); niciuna nu șterge date existente.
+   Faza 2.5 nu adaugă nicio migrare — sunt doar schimbări de interfață.
 
 4. **Pornește serverul de dezvoltare:**
    ```bash

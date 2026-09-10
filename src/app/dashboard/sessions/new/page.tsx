@@ -10,7 +10,7 @@ export default async function NewSessionPage({
   const { workshop } = await searchParams;
   const supabase = await createClient();
   const [{ data: workshops }, { data: sessionTypes }] = await Promise.all([
-    supabase.from("workshops").select("id, name").eq("is_active", true).order("sort_order"),
+    supabase.from("workshops").select("id, name").eq("is_active", true).order("name"),
     supabase
       .from("session_types")
       .select("id, name, suggested_sessions_used")

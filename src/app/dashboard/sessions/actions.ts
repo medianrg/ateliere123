@@ -35,40 +35,6 @@ export async function createSession(formData: FormData) {
   redirect(`/dashboard/sessions/${session.id}/attendance`);
 }
 
-export async function cancelSession(sessionId: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("sessions")
-    .update({ status: "cancelled" })
-    .eq("id", sessionId);
-
-  if (error) throw new Error(error.message);
-
-  // O ședință anulată nu consumă nimic din abonamente, indiferent ce era
-  // completat înainte de anulare.
-  const { error: attendanceError } = await supabase
-    .from("attendance")
-    .update({ sessions_used: 0 })
-    .eq("session_id", sessionId);
-  if (attendanceError) throw new Error(attendanceError.message);
-
-  revalidatePath("/dashboard");
-}
-
-export async function reopenSession(sessionId: string) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("sessions")
-    .update({ status: "scheduled" })
-    .eq("id", sessionId);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/dashboard");
-}
-
 export async function moveSession(sessionId: string, formData: FormData) {
   const supabase = await createClient();
   const newDate = str(formData, "date");
@@ -83,5 +49,6 @@ export async function moveSession(sessionId: string, formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/dashboard");
-  redirect(`/dashboard/sessions/${sessionId}/attendance`);
+  // Înapoi în calendar, pe săptămâna unde a aterizat ședința.
+  redirect(`/dashboard?view=week&date=${newDate}`);
 }

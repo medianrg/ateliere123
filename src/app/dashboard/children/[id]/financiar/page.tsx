@@ -124,13 +124,20 @@ export default async function ChildFinancialPage({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium">{sub.name}</p>
-                      {sub.status === "active" && (
-                        <form action={setSubscriptionStatus.bind(null, childId, sub.id, "cancelled")}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            Anulează
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Link href={`/dashboard/subscriptions/${sub.id}`}>
+                          <Button type="button" variant="ghost" size="sm">
+                            Editează
                           </Button>
-                        </form>
-                      )}
+                        </Link>
+                        {sub.status === "active" && (
+                          <form action={setSubscriptionStatus.bind(null, childId, sub.id, "cancelled")}>
+                            <Button type="submit" variant="ghost" size="sm">
+                              Anulează
+                            </Button>
+                          </form>
+                        )}
+                      </div>
                     </div>
                     <p className="text-sm text-neutral-500">
                       {formatDate(sub.start_date)} – {formatDate(sub.end_date)} · {sub.total_sessions}{" "}

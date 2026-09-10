@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
 import { fetchChildBalances } from "@/lib/finance";
 
 export default async function SubscriptionsPage() {
@@ -23,7 +24,12 @@ export default async function SubscriptionsPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-xl font-semibold">Abonamente</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Abonamente</h1>
+        <Link href="/dashboard/subscriptions/new">
+          <Button>+ Abonament nou</Button>
+        </Link>
+      </div>
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-neutral-500">

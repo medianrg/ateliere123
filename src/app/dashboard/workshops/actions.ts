@@ -28,7 +28,6 @@ function workshopFields(formData: FormData) {
     duration_min: int(formData, "duration_min"),
     month_week: int(formData, "month_week"),
     sessions_per_month: int(formData, "sessions_per_month"),
-    sort_order: int(formData, "sort_order") ?? 0,
   };
 }
 
