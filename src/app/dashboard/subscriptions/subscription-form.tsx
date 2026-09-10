@@ -10,14 +10,32 @@ import { todayInBucharest } from "@/lib/date";
 
 type Workshop = { id: string; name: string; price_per_session: string };
 
+export type SubscriptionInitial = {
+  workshop_id: string | null;
+  name: string;
+  total_sessions: number;
+  price_per_session: string;
+  price: string;
+  price_note: string | null;
+  start_date: string;
+  end_date: string;
+};
+
 export function SubscriptionForm({
   action,
   childId,
+  childOptions,
   workshops,
+  initial,
+  submitLabel,
 }: {
   action: (formData: FormData) => void;
-  childId: string;
+  /** Fixat când vii de pe fișa unui copil; altfel se alege din listă. */
+  childId?: string;
+  childOptions?: { id: string; first_name: string; last_name: string }[];
   workshops: Workshop[];
+  initial?: SubscriptionInitial;
+  submitLabel: string;
 }) {
   const pricePerSessionRef = useRef<HTMLInputElement>(null);
   const totalSessionsRef = useRef<HTMLInputElement>(null);
@@ -49,11 +67,33 @@ export function SubscriptionForm({
 
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="child_id" value={childId} />
+      {childId ? (
+        <input type="hidden" name="child_id" value={childId} />
+      ) : (
+        <div className="space-y-1.5">
+          <Label htmlFor="child_id">Copilul</Label>
+          <Select id="child_id" name="child_id" required defaultValue="">
+            <option value="" disabled>
+              alege copilul
+            </option>
+            {(childOptions ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.first_name} {c.last_name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="workshop_id">Atelier</Label>
-        <Select id="workshop_id" name="workshop_id" required onChange={handleWorkshopChange}>
+        <Select
+          id="workshop_id"
+          name="workshop_id"
+          required
+          defaultValue={initial?.workshop_id ?? ""}
+          onChange={handleWorkshopChange}
+        >
           <option value="">alege atelierul</option>
           {workshops.map((w) => (
             <option key={w.id} value={w.id}>
@@ -65,7 +105,13 @@ export function SubscriptionForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="name">Nume abonament</Label>
-        <Input id="name" name="name" required placeholder="ex. 8 ședințe septembrie" />
+        <Input
+          id="name"
+          name="name"
+          required
+          placeholder="ex. 8 ședințe septembrie"
+          defaultValue={initial?.name}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -78,7 +124,7 @@ export function SubscriptionForm({
             type="number"
             min="1"
             required
-            defaultValue="8"
+            defaultValue={initial?.total_sessions ?? 8}
             onChange={recomputePrice}
           />
         </div>
@@ -91,7 +137,7 @@ export function SubscriptionForm({
             type="number"
             step="0.01"
             min="0"
-            defaultValue="0"
+            defaultValue={initial?.price_per_session ?? "0"}
             onChange={recomputePrice}
           />
         </div>
@@ -99,26 +145,51 @@ export function SubscriptionForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="price">Preț total (editabil — reduceri, gratuități)</Label>
-        <Input ref={priceRef} id="price" name="price" type="number" step="0.01" min="0" defaultValue="0" />
+        <Input
+          ref={priceRef}
+          id="price"
+          name="price"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={initial?.price ?? "0"}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="price_note">Motivul reducerii (opțional, strict intern)</Label>
-        <Textarea id="price_note" name="price_note" rows={2} />
+        <Textarea
+          id="price_note"
+          name="price_note"
+          rows={2}
+          defaultValue={initial?.price_note ?? undefined}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="start_date">Data început</Label>
-          <Input id="start_date" name="start_date" type="date" required defaultValue={today} />
+          <Input
+            id="start_date"
+            name="start_date"
+            type="date"
+            required
+            defaultValue={initial?.start_date ?? today}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="end_date">Data expirării</Label>
-          <Input id="end_date" name="end_date" type="date" required defaultValue={inThreeMonths} />
+          <Input
+            id="end_date"
+            name="end_date"
+            type="date"
+            required
+            defaultValue={initial?.end_date ?? inThreeMonths}
+          />
         </div>
       </div>
 
-      <Button type="submit">Creează abonamentul</Button>
+      <Button type="submit">{submitLabel}</Button>
     </form>
   );
 }

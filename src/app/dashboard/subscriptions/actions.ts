@@ -35,6 +35,33 @@ export async function createSubscription(formData: FormData) {
   redirect(`/dashboard/children/${childId}/financiar`);
 }
 
+export async function updateSubscription(
+  subscriptionId: string,
+  childId: string,
+  formData: FormData,
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      workshop_id: str(formData, "workshop_id"),
+      name: str(formData, "name"),
+      total_sessions: str(formData, "total_sessions"),
+      price_per_session: str(formData, "price_per_session") ?? "0",
+      price: str(formData, "price") ?? "0",
+      price_note: str(formData, "price_note"),
+      start_date: str(formData, "start_date"),
+      end_date: str(formData, "end_date"),
+    })
+    .eq("id", subscriptionId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/dashboard/children/${childId}/financiar`);
+  redirect(`/dashboard/children/${childId}/financiar`);
+}
+
 export async function setSubscriptionStatus(
   childId: string,
   subscriptionId: string,

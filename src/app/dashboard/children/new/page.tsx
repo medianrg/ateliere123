@@ -8,7 +8,7 @@ export default async function NewChildPage() {
     .from("workshops")
     .select("id, name")
     .eq("is_active", true)
-    .order("sort_order");
+    .order("name");
 
   return (
     <div className="mx-auto max-w-md space-y-6">

@@ -143,3 +143,59 @@ pe zi poate veni ulterior dacă se dovedește necesară.
 Rămâne vizibilă indiferent pe ce săptămână navighează Rebecca, exact cum
 cere planul: „Rămân acolo până sunt completate." E afișată doar în
 vederea săptămânală (în vederea lunară apare doar un rezumat cu link).
+
+## Faza 2.5 — consolidare
+
+**„Generează ședințe" a fost înlocuit cu „+ Adaugă ședințe", pe săptămână.**
+PLAN.md descrie generarea pe lună („Rebecca alege atelierul și perioada —
+«septembrie 2026»"). În practică Rebecca nu lucrează așa: decide de la o
+săptămână la alta ce ședințe are și le mută după aceea. Ecranul nou pornește
+din săptămâna vizualizată în calendar, propune bifate doar atelierele
+săptămânale, lasă bifa la latitudinea ei pentru cele la două săptămâni și
+lunare, și permite schimbarea zilei și a orei pe loc. Cuvântul „generează" a
+dispărut cu totul: nu înseamnă nimic în afara programării.
+
+**Abonamentul se alege după data ședinței, nu după ziua de azi.** Era o
+eroare tăcută: la completarea unei prezențe vechi, aplicația căuta
+abonamentul valabil în momentul bifării. Dacă abonamentul de atunci expirase
+între timp, ședința se scădea din cel nou, sau copilul era marcat drop-in pe
+nedrept — iar soldul din „Cine are restanțe" ieșea greșit fără niciun semn.
+Acum atât indicatorul de pe ecranul de prezență, cât și scăderea efectivă se
+raportează la data ședinței.
+
+**„Șterge bifa" e singura ștergere reală din aplicație.** Regula „niciodată
+DELETE" e despre entități — copii, ateliere, abonamente — care se
+dezactivează, nu se șterg. O prezență pusă pe copilul greșit nu se poate
+corecta comutând între „prezent" și „absent": ambele sunt afirmații despre
+copilul acela. PLAN.md prevede explicit „ștergere prezență" în `audit_log`,
+deci cazul e anticipat.
+
+**Importul cere doar numele.** Un import cu toate câmpurile ar fi însemnat un
+format de fișier de explicat. Rebecca lipește o listă de nume, câte unul pe
+rând, alege opțional un atelier pentru tot lotul, și vede exact ce se creează
+înainte să confirme. Numele care există deja sunt sărite, ca rularea de două
+ori a aceleiași liste să nu producă copii dubli. Restul câmpurilor se
+completează pe fișa fiecărui copil, când e nevoie.
+
+**Prenumele e primul cuvânt din rând.** „Maria Ionescu" → prenume „Maria",
+nume „Ionescu". Un rând cu un singur cuvânt rămâne doar prenume. E o
+convenție, nu o deducție inteligentă — și se corectează pe fișă în două
+secunde dacă nimerește invers.
+
+**Culoarea atelierului a devenit vizibilă.** Se alegea în formular și nu se
+folosea nicăieri în calendar. Acum apare ca o dungă pe marginea fiecărui card
+de ședință. Câmpul exista deja; abia acum înseamnă ceva.
+
+**„Mută" a ieșit din ecranul de prezență pe cardul din calendar.** Mutarea
+ședințelor e mod normal de lucru, nu excepție, deci nu are ce căuta la două
+ecrane distanță. După mutare, aplicația se întoarce în calendar, pe
+săptămâna unde a aterizat ședința.
+
+**„Ordine de afișare" la ateliere a fost scoasă din formular.** Coloana
+`sort_order` rămâne în bază (nu se șterg date), dar nu mai e nici cerută, nici
+folosită: atelierele se ordonează alfabetic. Era un număr pe care Rebecca
+trebuia să-l înțeleagă fără să câștige nimic.
+
+**`cancelSession` și `reopenSession` au fost șterse.** Existau în cod din Faza
+1, dar niciun buton nu le apela. Anularea unei ședințe nu e pe lista Fazei
+2.5; dacă se dovedește necesară, se scrie atunci, cu interfața ei cu tot.

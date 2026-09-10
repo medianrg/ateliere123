@@ -30,7 +30,7 @@ export default async function ChildDetailPage({
         .from("child_workshops")
         .select("workshop_id, is_primary, joined_at, left_at, workshops(id, name)")
         .eq("child_id", id),
-      supabase.from("workshops").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("workshops").select("id, name").eq("is_active", true).order("name"),
     ]);
 
   if (!child) notFound();
